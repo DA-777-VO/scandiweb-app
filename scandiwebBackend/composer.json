@@ -1,0 +1,19 @@
+{
+    "name": "scandiweb/backend",
+    "description": "Scandiweb Full Stack Test Backend",
+    "type": "project",
+    "require": {
+        "php": ">=8.2",
+        "webonyx/graphql-php": "^15.0",
+        "vlucas/phpdotenv": "^5.5",
+      "ext-pdo": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true
+    }
+}
