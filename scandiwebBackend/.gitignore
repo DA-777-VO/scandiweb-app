@@ -1,5 +1,6 @@
 docs
 docs_new
+arch_docs
 
 # Environment variables
 .env
@@ -7,6 +8,7 @@ docs_new
 .env.production
 .env.staging
 .env.*.local
+.env.example
 
 # Composer
 /vendor/
@@ -83,3 +85,7 @@ config/local.*
 
 # Session files
 sessions/
+
+Dockerfileee
+response.txt
+router.phppp

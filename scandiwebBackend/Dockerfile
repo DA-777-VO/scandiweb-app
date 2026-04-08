@@ -1,23 +1,58 @@
-# 1. Берем легковесный образ PHP 8.2 с командной строкой (CLI), без Apache/FPM
-FROM php:8.2-cli
+# Используем официальный PHP 8.2 с Apache
+FROM php:8.2-apache
 
-# 2. Устанавливаем системные утилиты для Composer и расширение для MySQL (PDO)
-# Объединяем в одну команду для уменьшения размера итогового образа
+# ── Системные зависимости и PHP расширения ──────────────────────────────────
+
+# Устанавливаем зависимости для pdo_mysql и других расширений
 RUN apt-get update && apt-get install -y \
-    git \
+    libzip-dev \
     zip \
     unzip \
-    && docker-php-ext-install pdo pdo_mysql \
+    curl \
+    && docker-php-ext-install \
+        pdo \
+        pdo_mysql \
+        mysqli \
+        zip \
+    && a2enmod rewrite \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# 3. Копируем Composer из его официального образа (самый чистый способ установки)
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+# ── Composer ────────────────────────────────────────────────────────────────
 
-# 4. Устанавливаем рабочую директорию внутри контейнера
-WORKDIR /app
+COPY --from=composer:2.6 /usr/bin/composer /usr/bin/composer
 
-# 5. Команда для запуска. Запускает встроенный сервер PHP при старте контейнера
-# -S 0.0.0.0:80 -> Слушать на всех интерфейсах на порту 80 (внутри контейнера)
-# -t public -> Установить корень сайта в папку /public (важно для безопасности и роутинга)
-# public/index.php -> Указать, что все запросы, не являющиеся файлами, должны идти в наш роутер
-CMD ["php", "-S", "0.0.0.0:80", "-t", "public", "public/index.php"]
+# ── Apache конфигурация ─────────────────────────────────────────────────────
+
+# Устанавливаем DocumentRoot на папку public/
+# и разрешаем .htaccess переопределения
+COPY docker/apache.conf /etc/apache2/sites-available/000-default.conf
+COPY docker/ports.conf /etc/apache2/ports.conf
+
+# ── Рабочая директория ──────────────────────────────────────────────────────
+
+WORKDIR /var/www/html
+
+# ── Устанавливаем зависимости Composer ──────────────────────────────────────
+# Копируем только composer.json сначала — слой кэшируется если файл не менялся
+
+COPY composer.json ./
+
+RUN composer install --no-dev --optimize-autoloader --no-scripts
+
+# ── Копируем весь код ────────────────────────────────────────────────────────
+# При использовании bind mount в docker-compose это не используется для разработки,
+# но нужно для сборки standalone образа
+
+COPY . .
+
+# ── Права на файлы ───────────────────────────────────────────────────────────
+
+RUN chown -R www-data:www-data /var/www/html
+
+# ── Открываем порт ───────────────────────────────────────────────────────────
+
+EXPOSE 8000
+
+# Apache слушает на 80 по умолчанию, но мы переключим на 8000
+CMD ["apache2-foreground"]

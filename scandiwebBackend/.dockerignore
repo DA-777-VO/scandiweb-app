@@ -1,0 +1,6 @@
+vendor/
+.env
+.git/
+*.md
+docs/
+docs_explained/

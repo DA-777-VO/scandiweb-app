@@ -1,28 +1,76 @@
+version: '3.9'
+
 services:
-  # Наш PHP-сервер (бэкенд)
-  app:
+
+  # ─── MySQL ────────────────────────────────────────────────────────────────
+  db:
+    image: mysql:8.0
+    container_name: scandiweb_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: scandiweb
+      MYSQL_USER: scandiweb
+      MYSQL_PASSWORD: scandiweb
+    ports:
+      - "3306:3306"
+    volumes:
+      # Bind mount: данные БД хранятся в папке mysql_data рядом с docker-compose.yml
+      - ./mysql_data:/var/lib/mysql
+      # Автоматически выполнить migrate.sql при первом запуске
+      - ./scandiwebBackend/database/migrate.sql:/docker-entrypoint-initdb.d/migrate.sql:ro
+    networks:
+      - scandiweb_net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ─── PHP Backend ──────────────────────────────────────────────────────────
+  backend:
     build:
       context: ./scandiwebBackend
       dockerfile: Dockerfile
+    container_name: scandiweb_backend
+    restart: unless-stopped
+    environment:
+      DB_HOST: db           # имя сервиса выше, Docker резолвит его в IP
+      DB_PORT: 3306
+      DB_NAME: scandiweb
+      DB_USER: scandiweb
+      DB_PASSWORD: scandiweb
+      APP_DEBUG: "true"
     ports:
       - "8000:8000"
     volumes:
-      - ./scandiwebBackend/:/app
-    env_file:
-      - ./scandiwebBackend/.env
+      # Bind mount: код монтируется из твоей папки прямо в контейнер
+      - ./scandiwebBackend:/var/www/html
+    networks:
+      - scandiweb_net
     depends_on:
-      - db
+      db:
+        condition: service_healthy   # ждём пока MySQL будет готов
 
-  # Сервис базы данных MySQL
-  db:
-    image: mysql:8.4.8
+  # ─── React Frontend ───────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./scandiwebFrontend
+      dockerfile: Dockerfile
+    container_name: scandiweb_frontend
+    restart: unless-stopped
     ports:
-      - "3306:3306"
-    environment:
-      MYSQL_DATABASE: scandiweb
-      MYSQL_ROOT_PASSWORD: secret
+      - "3000:3000"
     volumes:
-      # ВОТ ИЗМЕНЕНИЕ:
-      # Мы монтируем папку ./data/db с твоего компьютера в папку /var/lib/mysql внутри контейнера
-      - ./data/db:/var/lib/mysql
-      - ./scandiwebBackend/database/migrate.sql:/docker-entrypoint-initdb.d/migrate.sql
+      # Bind mount: код монтируется из твоей папки
+      - ./scandiwebFrontend:/app
+      # Анонимный volume для node_modules — не перезаписывается из хоста
+      - /app/node_modules
+    networks:
+      - scandiweb_net
+    depends_on:
+      - backend
+
+networks:
+  scandiweb_net:
+    driver: bridge
