@@ -13,6 +13,7 @@ export default function ProductDetails({ product }) {
     attr => selectedAttributes[attr.name] !== undefined
   );
 
+  // Must be in stock AND all attributes selected
   const canAddToCart = product.inStock && allAttributesSelected;
 
   const handleAddToCart = () => {

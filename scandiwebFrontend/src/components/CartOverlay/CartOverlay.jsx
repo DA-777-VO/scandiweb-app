@@ -37,6 +37,7 @@ export default function CartOverlay() {
 
   return (
     <>
+      {/* Greyed-out backdrop — covers everything except header */}
       <div
         className={styles.backdrop}
         onClick={() => setIsCartOpen(false)}
@@ -45,7 +46,7 @@ export default function CartOverlay() {
         <div className={styles.header}>
           <span className={styles.title}>
             <strong>My Bag</strong>
-            {totalItems > 0 && `, ${totalItems} ${totalItems === 1 ? 'item' : 'items'}`}
+            {totalItems > 0 && `, ${totalItems} ${totalItems === 1 ? 'Item' : 'Items'}`}
           </span>
         </div>
 
@@ -61,6 +62,7 @@ export default function CartOverlay() {
         </div>
 
         <div className={styles.footer}>
+          {/* data-testid='cart-total' as per requirements */}
           <div className={styles.total} data-testid="cart-total">
             <span>Total</span>
             <span>{formatPrice(totalPrice, currency.symbol)}</span>
@@ -92,51 +94,57 @@ function CartItem({ item, onIncrease, onDecrease }) {
           </p>
         )}
 
-        {product.attributes.map(attr => (
-          <div
-            key={attr.id}
-            className={styles.attrGroup}
-            data-testid={`cart-item-attribute-${toKebabCase(attr.name)}`}
-          >
-            <p className={styles.attrLabel}>{attr.name}:</p>
-            <div className={styles.attrOptions}>
-              {attr.items.map(attrItem => {
-                const isSelected = selectedAttributes[attr.name] === attrItem.value;
-                const kebabAttr = toKebabCase(attr.name);
-                const kebabItem = toKebabCase(attrItem.id);
-                const testId = isSelected
-                  ? `cart-item-attribute-${kebabAttr}-${kebabItem}-selected`
-                  : `cart-item-attribute-${kebabAttr}-${kebabItem}`;
+        {product.attributes.map(attr => {
+          const kebabAttr = toKebabCase(attr.name);
 
-                return attr.type === 'swatch' ? (
-                  <div
-                    key={attrItem.id}
-                    className={`${styles.swatchOpt} ${isSelected ? styles.swatchOptSelected : ''}`}
-                    style={{ background: attrItem.value }}
-                    data-testid={testId}
-                  />
-                ) : (
-                  <div
-                    key={attrItem.id}
-                    className={`${styles.textOpt} ${isSelected ? styles.textOptSelected : ''}`}
-                    data-testid={testId}
-                  >
-                    {attrItem.displayValue}
-                  </div>
-                );
-              })}
+          return (
+            <div
+              key={attr.id}
+              className={styles.attrGroup}
+              data-testid={`cart-item-attribute-${kebabAttr}`}
+            >
+              <p className={styles.attrLabel}>{attr.name}:</p>
+              <div className={styles.attrOptions}>
+                {attr.items.map(attrItem => {
+                  const isSelected = selectedAttributes[attr.name] === attrItem.value;
+                  // Requirements: cart-item-attribute-${attr}-${item} and -selected suffix
+                  const kebabItem = toKebabCase(attrItem.id);
+                  const baseTestId = `cart-item-attribute-${kebabAttr}-${kebabItem}`;
+                  const testId = isSelected ? `${baseTestId}-selected` : baseTestId;
+
+                  return attr.type === 'swatch' ? (
+                    <div
+                      key={attrItem.id}
+                      className={`${styles.swatchOpt} ${isSelected ? styles.swatchOptSelected : ''}`}
+                      style={{ background: attrItem.value }}
+                      data-testid={testId}
+                    />
+                  ) : (
+                    <div
+                      key={attrItem.id}
+                      className={`${styles.textOpt} ${isSelected ? styles.textOptSelected : ''}`}
+                      data-testid={testId}
+                    >
+                      {attrItem.displayValue}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className={styles.quantityControls}>
+        {/* Requirements: data-testid='cart-item-amount-increase' */}
         <button
           className={styles.qtyBtn}
           onClick={onIncrease}
           data-testid="cart-item-amount-increase"
         >+</button>
+        {/* Requirements: data-testid='cart-item-amount' */}
         <span data-testid="cart-item-amount">{quantity}</span>
+        {/* Requirements: data-testid='cart-item-amount-decrease' */}
         <button
           className={styles.qtyBtn}
           onClick={onDecrease}

@@ -58,14 +58,19 @@ function AppContent() {
   };
 
   return (
-    <div className={`app ${isCartOpen ? 'cart-open' : ''}`}>
+    <div className="app">
+      {/* Header is always on top, not greyed out when cart opens */}
       <Header
         categories={categories}
         activeCategory={activeCategory}
         onCategoryChange={handleCategoryChange}
       />
+
+      {/* CartOverlay renders backdrop + overlay panel */}
       <CartOverlay />
-      <main className={isCartOpen ? 'overlay-active' : ''}>
+
+      {/* Main content — greyed out via backdrop when cart is open */}
+      <main>
         {selectedProduct ? (
           <ProductDetails product={selectedProduct} />
         ) : loading ? (
