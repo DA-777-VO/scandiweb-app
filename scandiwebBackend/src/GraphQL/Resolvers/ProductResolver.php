@@ -4,100 +4,82 @@ declare(strict_types=1);
 
 namespace App\GraphQL\Resolvers;
 
-use App\Database\Connection;
 use App\Models\Product\AbstractProduct;
 use App\Models\Product\ProductFactory;
+use App\Repository\ProductRepository;
 
 class ProductResolver
 {
-    public static function getAll(?string $category = null): array
+    private ProductRepository $repository;
+
+    public function __construct()
     {
-        $pdo = Connection::getInstance();
+        $this->repository = new ProductRepository();
+    }
 
-        if ($category && $category !== 'all') {
-            $stmt = $pdo->prepare('SELECT * FROM products WHERE category = ?');
-            $stmt->execute([$category]);
-        } else {
-            $stmt = $pdo->query('SELECT * FROM products');
-        }
-
-        $rows = $stmt->fetchAll();
+    public function getAll(?string $category = null): array
+    {
+        $rows = $this->repository->findAll($category);
 
         return array_map(
-            fn(array $row) => self::hydrateProduct($row)->toArray(),
+            fn(array $row) => $this->hydrateProduct($row)->toArray(),
             $rows
         );
     }
 
-    public static function getById(string $id): ?array
+    public function getById(string $id): ?array
     {
-        $pdo = Connection::getInstance();
-        $stmt = $pdo->prepare('SELECT * FROM products WHERE id = ?');
-        $stmt->execute([$id]);
-        $row = $stmt->fetch();
+        $row = $this->repository->findById($id);
 
-        if (!$row) {
+        if ($row === null) {
             return null;
         }
 
-        return self::hydrateProduct($row)->toArray();
+        return $this->hydrateProduct($row)->toArray();
     }
 
-    private static function hydrateProduct(array $row): AbstractProduct
+    private function hydrateProduct(array $row): AbstractProduct
     {
         $product = ProductFactory::create($row);
 
-        // Load attributes
-        $pdo = Connection::getInstance();
-        $stmt = $pdo->prepare(
-            'SELECT a.*, ai.id as item_id, ai.display_value, ai.value as item_value
-             FROM attributes a
-             LEFT JOIN attribute_items ai ON ai.attribute_id = a.id AND ai.product_id = a.product_id
-             WHERE a.product_id = ?
-             ORDER BY a.id, ai.sort_order'
-        );
-        $stmt->execute([$row['id']]);
-        $attrRows = $stmt->fetchAll();
-
+        $attrRows      = $this->repository->findAttributesByProductId($row['id']);
         $attributesMap = [];
+
         foreach ($attrRows as $attrRow) {
             $attrKey = $attrRow['id'] . '_' . $attrRow['product_id'];
+
             if (!isset($attributesMap[$attrKey])) {
                 $attributesMap[$attrKey] = [
-                    'id' => $attrRow['name'],
-                    'name' => $attrRow['name'],
-                    'type' => $attrRow['type'],
+                    'id'    => $attrRow['name'],
+                    'name'  => $attrRow['name'],
+                    'type'  => $attrRow['type'],
                     'items' => [],
                 ];
             }
-            if ($attrRow['item_id']) {
+
+            if ($attrRow['item_id'] !== null) {
                 $attributesMap[$attrKey]['items'][] = [
-                    'id' => $attrRow['item_id'],
+                    'id'           => $attrRow['item_id'],
                     'displayValue' => $attrRow['display_value'],
-                    'value' => $attrRow['item_value'],
+                    'value'        => $attrRow['item_value'],
                 ];
             }
         }
 
         $product->setAttributes(array_values($attributesMap));
 
-        // Load prices
-        $stmt = $pdo->prepare(
-            'SELECT p.amount, c.label, c.symbol
-             FROM prices p
-             JOIN currencies c ON c.id = p.currency_id
-             WHERE p.product_id = ?'
-        );
-        $stmt->execute([$row['id']]);
-        $priceRows = $stmt->fetchAll();
+        $priceRows = $this->repository->findPricesByProductId($row['id']);
 
-        $prices = array_map(fn(array $pr) => [
-            'amount' => (float) $pr['amount'],
-            'currency' => [
-                'label' => $pr['label'],
-                'symbol' => $pr['symbol'],
+        $prices = array_map(
+            fn(array $pr) => [
+                'amount'   => (float) $pr['amount'],
+                'currency' => [
+                    'label'  => $pr['label'],
+                    'symbol' => $pr['symbol'],
+                ],
             ],
-        ], $priceRows);
+            $priceRows
+        );
 
         $product->setPrices($prices);
 

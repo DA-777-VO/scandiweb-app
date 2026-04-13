@@ -4,16 +4,21 @@ declare(strict_types=1);
 
 namespace App\GraphQL\Resolvers;
 
-use App\Database\Connection;
 use App\Models\Category\GeneralCategory;
+use App\Repository\CategoryRepository;
 
 class CategoryResolver
 {
-    public static function getAll(): array
+    private CategoryRepository $repository;
+
+    public function __construct()
     {
-        $pdo = Connection::getInstance();
-        $stmt = $pdo->query('SELECT * FROM categories');
-        $rows = $stmt->fetchAll();
+        $this->repository = new CategoryRepository();
+    }
+
+    public function getAll(): array
+    {
+        $rows = $this->repository->findAll();
 
         return array_map(
             fn(array $row) => (new GeneralCategory($row))->toArray(),
@@ -21,14 +26,11 @@ class CategoryResolver
         );
     }
 
-    public static function getByName(string $name): ?array
+    public function getByName(string $name): ?array
     {
-        $pdo = Connection::getInstance();
-        $stmt = $pdo->prepare('SELECT * FROM categories WHERE name = ?');
-        $stmt->execute([$name]);
-        $row = $stmt->fetch();
+        $row = $this->repository->findByName($name);
 
-        if (!$row) {
+        if ($row === null) {
             return null;
         }
 
