@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\GraphQL\Resolvers;
 
 use App\Models\Product\AbstractProduct;
-use App\Models\Product\ProductFactory;
 use App\Repository\ProductRepository;
 
 class ProductResolver
@@ -21,8 +20,23 @@ class ProductResolver
     {
         $rows = $this->repository->findAll($category);
 
+        if (empty($rows)) {
+            return [];
+        }
+
+        // Собираем все product_id одним проходом
+        $productIds = array_column($rows, 'id');
+
+        // Два batch-запроса вместо N*2 запросов в цикле
+        $attributesByProduct = $this->repository->findAttributesByProductIds($productIds);
+        $pricesByProduct     = $this->repository->findPricesByProductIds($productIds);
+
         return array_map(
-            fn(array $row) => $this->hydrateProduct($row)->toArray(),
+            fn(array $row) => $this->hydrateProduct(
+                $row,
+                $attributesByProduct[$row['id']] ?? [],
+                $pricesByProduct[$row['id']]     ?? []
+            )->toArray(),
             $rows
         );
     }
@@ -35,54 +49,30 @@ class ProductResolver
             return null;
         }
 
-        return $this->hydrateProduct($row)->toArray();
+        // Для одиночного продукта те же batch-методы (принимают массив)
+        $attributesByProduct = $this->repository->findAttributesByProductIds([$id]);
+        $pricesByProduct     = $this->repository->findPricesByProductIds([$id]);
+
+        return $this->hydrateProduct(
+            $row,
+            $attributesByProduct[$id] ?? [],
+            $pricesByProduct[$id]     ?? []
+        )->toArray();
     }
 
-    private function hydrateProduct(array $row): AbstractProduct
-    {
-        $product = ProductFactory::create($row);
-
-        $attrRows      = $this->repository->findAttributesByProductId($row['id']);
-        $attributesMap = [];
-
-        foreach ($attrRows as $attrRow) {
-            $attrKey = $attrRow['id'] . '_' . $attrRow['product_id'];
-
-            if (!isset($attributesMap[$attrKey])) {
-                $attributesMap[$attrKey] = [
-                    'id'    => $attrRow['name'],
-                    'name'  => $attrRow['name'],
-                    'type'  => $attrRow['type'],
-                    'items' => [],
-                ];
-            }
-
-            if ($attrRow['item_id'] !== null) {
-                $attributesMap[$attrKey]['items'][] = [
-                    'id'           => $attrRow['item_id'],
-                    'displayValue' => $attrRow['display_value'],
-                    'value'        => $attrRow['item_value'],
-                ];
-            }
-        }
-
-        $product->setAttributes(array_values($attributesMap));
-
-        $priceRows = $this->repository->findPricesByProductId($row['id']);
-
-        $prices = array_map(
-            fn(array $pr) => [
-                'amount'   => (float) $pr['amount'],
-                'currency' => [
-                    'label'  => $pr['label'],
-                    'symbol' => $pr['symbol'],
-                ],
-            ],
-            $priceRows
-        );
-
+    /**
+     * Собирает объект продукта из строки БД + предзагруженных связей.
+     * Не делает никаких запросов к БД — данные уже подготовлены Resolver-ом.
+     */
+    private function hydrateProduct(
+        array $row,
+        array $attributes,
+        array $prices
+    ): AbstractProduct {
+        // AbstractProduct::create() — Static Factory Method с валидацией
+        $product = AbstractProduct::create($row);
+        $product->setAttributes($attributes);
         $product->setPrices($prices);
-
         return $product;
     }
 }

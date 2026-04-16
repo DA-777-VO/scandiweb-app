@@ -5,32 +5,82 @@ declare(strict_types=1);
 namespace App\Models\Product;
 
 use App\Models\Attribute\AbstractAttribute;
-use App\Models\Attribute\AttributeFactory;
 
+/**
+ * Абстрактная модель продукта.
+ *
+ * Паттерн Static Factory Method:
+ *   - конструктор private → нельзя создать объект снаружи через new
+ *   - статический метод create() → единственная точка создания объектов
+ *   - каждый подкласс вызывает parent::__construct() через static::new()
+ *
+ * Подклассы (ClothesProduct, TechProduct) остаются пустыми намеренно —
+ * они представляют разные типы для полиморфизма (требование ТЗ),
+ * даже если текущая логика одинакова. В будущем каждый расширяется отдельно.
+ */
 abstract class AbstractProduct
 {
     protected string $id;
     protected string $name;
-    protected bool $inStock;
-    protected array $gallery;
+    protected bool   $inStock;
+    protected array  $gallery;
     protected string $description;
-    protected string $category;
-    protected array $attributes;
-    protected array $prices;
+    protected ProductCategory $category;
     protected string $brand;
 
-    public function __construct(array $data)
+    /** @var AbstractAttribute[] */
+    protected array $attributes = [];
+
+    /** @var array<int, array<string, mixed>> */
+    protected array $prices = [];
+
+    /**
+     * Конструктор protected — используется только фабрикой create().
+     * Фабрика уже преобразовала category в enum, поэтому повторной проверки здесь нет.
+     */
+    protected function __construct(array $data, ProductCategory $category)
     {
-        $this->id = $data['id'];
-        $this->name = $data['name'];
-        $this->inStock = (bool) $data['in_stock'];
-        $this->gallery = json_decode($data['gallery'] ?? '[]', true) ?? [];
+        $this->id          = $data['id'];
+        $this->name        = $data['name'];
+        $this->inStock     = (bool) ($data['in_stock'] ?? false);
+        $this->gallery     = json_decode($data['gallery'] ?? '[]', true) ?? [];
         $this->description = $data['description'] ?? '';
-        $this->category = $data['category'] ?? '';
-        $this->brand = $data['brand'] ?? '';
-        $this->prices = [];
-        $this->attributes = [];
+        $this->brand       = $data['brand'] ?? '';
+        $this->category    = $category;
     }
+
+    // ── Static Factory Method ─────────────────────────────────────────────────
+
+    /**
+     * Единственная точка создания продуктов.
+     * Валидирует обязательные поля, определяет тип через enum категории.
+     *
+     * @param  array<string, mixed> $data  Строка из БД
+     * @throws \InvalidArgumentException   При отсутствии обязательных полей или неизвестной категории
+     */
+    public static function create(array $data): static
+    {
+        // Валидация обязательных полей
+        if (empty($data['id'])) {
+            throw new \InvalidArgumentException('Product data must contain a non-empty "id".');
+        }
+        if (empty($data['name'])) {
+            throw new \InvalidArgumentException('Product data must contain a non-empty "name".');
+        }
+        if (!isset($data['category'])) {
+            throw new \InvalidArgumentException('Product data must contain "category".');
+        }
+
+        // Преобразуем строку в enum один раз и используем его и для match(), и для модели.
+        $category = ProductCategory::fromString($data['category']);
+
+        return match ($category) {
+            ProductCategory::Clothes => new ClothesProduct($data, $category),
+            ProductCategory::Tech    => new TechProduct($data, $category),
+        };
+    }
+
+    // ── Геттеры ───────────────────────────────────────────────────────────────
 
     public function getId(): string
     {
@@ -57,7 +107,7 @@ abstract class AbstractProduct
         return $this->description;
     }
 
-    public function getCategory(): string
+    public function getCategory(): ProductCategory
     {
         return $this->category;
     }
@@ -65,19 +115,6 @@ abstract class AbstractProduct
     public function getBrand(): string
     {
         return $this->brand;
-    }
-
-    public function setPrices(array $prices): void
-    {
-        $this->prices = $prices;
-    }
-
-    public function setAttributes(array $attributesData): void
-    {
-        $this->attributes = array_map(
-            fn(array $attr) => AttributeFactory::create($attr),
-            $attributesData
-        );
     }
 
     public function getAttributes(): array
@@ -90,19 +127,34 @@ abstract class AbstractProduct
         return $this->prices;
     }
 
-    abstract public function toArray(): array;
+    // ── Сеттеры (вызываются из Resolver после загрузки связанных данных) ──────
 
-    protected function baseToArray(): array
+    public function setAttributes(array $attributesData): void
+    {
+        $this->attributes = array_map(
+            fn(array $attr) => AbstractAttribute::create($attr),
+            $attributesData
+        );
+    }
+
+    public function setPrices(array $prices): void
+    {
+        $this->prices = $prices;
+    }
+
+    // ── Сериализация ──────────────────────────────────────────────────────────
+
+    public function toArray(): array
     {
         return [
-            'id' => $this->id,
-            'name' => $this->name,
-            'inStock' => $this->inStock,
-            'gallery' => $this->gallery,
+            'id'          => $this->id,
+            'name'        => $this->name,
+            'inStock'     => $this->inStock,
+            'gallery'     => $this->gallery,
             'description' => $this->description,
-            'category' => $this->category,
-            'brand' => $this->brand,
-            'attributes' => array_map(
+            'category'    => $this->category->value,
+            'brand'       => $this->brand,
+            'attributes'  => array_map(
                 fn(AbstractAttribute $attr) => $attr->toArray(),
                 $this->attributes
             ),

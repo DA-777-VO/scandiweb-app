@@ -15,6 +15,12 @@ class OrderRepository
         $this->pdo = Connection::getInstance();
     }
 
+    /**
+     * Creates order with items inside a transaction.
+     * Returns the new order id.
+     *
+     * @param array<int, array<string, mixed>> $items
+     */
     public function createOrder(array $items): int
     {
         $this->pdo->beginTransaction();
