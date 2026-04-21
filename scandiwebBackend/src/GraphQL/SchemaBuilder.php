@@ -10,6 +10,7 @@ use App\GraphQL\Resolvers\ProductResolver;
 use App\GraphQL\Types\AttributeType;
 use App\GraphQL\Types\CategoryType;
 use App\GraphQL\Types\ProductType;
+use App\Models\Product\ProductCategory;
 use GraphQL\Type\Definition\InputObjectType;
 use GraphQL\Type\Definition\ObjectType;
 use GraphQL\Type\Definition\Type;
@@ -45,7 +46,11 @@ class SchemaBuilder
                 'products' => [
                     'type'    => Type::listOf($productType),
                     'args'    => ['category' => Type::string()],
-                    'resolve' => fn($root, array $args) => $productResolver->getAll($args['category'] ?? null),
+//                    'resolve' => fn($root, array $args) => $productResolver->getAll($args['category'] ?? null),
+                    'resolve' => fn($root, array $args)
+                    => $productResolver->getAll(
+                        ProductCategory::fromNullableString($args['category'] ?? null)
+                    ),
                 ],
                 'product' => [
                     'type'    => $productType,

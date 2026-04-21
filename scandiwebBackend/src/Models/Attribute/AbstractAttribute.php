@@ -23,15 +23,16 @@ abstract class AbstractAttribute
     protected array         $items;
 
     /**
-     * Конструктор protected — используется только фабрикой create().
-     * Фабрика уже преобразовала type в enum, поэтому повторной проверки здесь нет.
+     * Конструктор private — объекты создаются только через create().
      */
-    protected function __construct(array $data, AttributeType $type)
+    private function __construct(array $data)
     {
         $this->id    = $data['id'];
         $this->name  = $data['name'];
         $this->items = $data['items'] ?? [];
-        $this->type = $type;
+
+        // Enum-валидация типа
+        $this->type = AttributeType::fromString($data['type'] ?? '');
     }
 
     // ── Static Factory Method ─────────────────────────────────────────────────
@@ -54,12 +55,11 @@ abstract class AbstractAttribute
             throw new \InvalidArgumentException('Attribute data must contain "type".');
         }
 
-        // Преобразуем строку в enum один раз и передаём в конкретный класс готовый тип.
         $type = AttributeType::fromString($data['type']);
 
         return match ($type) {
-            AttributeType::Swatch => new SwatchAttribute($data, $type),
-            AttributeType::Text   => new TextAttribute($data, $type),
+            AttributeType::Swatch => new SwatchAttribute($data),
+            AttributeType::Text   => new TextAttribute($data),
         };
     }
 

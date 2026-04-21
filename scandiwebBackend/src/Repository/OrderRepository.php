@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Database\Connection;
+use Throwable;
 
 class OrderRepository
 {
@@ -23,18 +24,19 @@ class OrderRepository
      */
     public function createOrder(array $items): int
     {
-        $this->pdo->beginTransaction();
+        $orderId = 0;
 
-        try {
+        $this->atomicTransaction(function () use ($items, &$orderId) {
             $stmt = $this->pdo->prepare('INSERT INTO orders (created_at) VALUES (NOW())');
             $stmt->execute();
-            $orderId = (int) $this->pdo->lastInsertId();
+            $orderId = (int)$this->pdo->lastInsertId();
 
             $stmt = $this->pdo->prepare(
                 'INSERT INTO order_items (order_id, product_id, quantity, selected_attributes)
-                 VALUES (?, ?, ?, ?)'
+             VALUES (?, ?, ?, ?)'
             );
 
+            // TODO use batch insert
             foreach ($items as $item) {
                 $stmt->execute([
                     $orderId,
@@ -43,12 +45,23 @@ class OrderRepository
                     $item['selectedAttributes'] ?? null,
                 ]);
             }
+        });
 
+        return $orderId;
+    }
+
+    // TODO USE THIS THING AND MAKE STATIC OF MOVE TO DB_HELPER_MODULE
+    public function atomicTransaction(callable $block): void
+    {
+        $this->pdo->beginTransaction();
+        try {
+            $block();
             $this->pdo->commit();
-            return $orderId;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->pdo->rollBack();
             throw $e;
         }
     }
 }
+
+

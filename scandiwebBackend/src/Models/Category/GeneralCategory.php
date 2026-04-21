@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Models\Category;
 
-class GeneralCategory extends AbstractCategory
+/**
+ * Общая категория товаров (all, clothes, tech).
+ *
+ * Класс намеренно пустой — toArray() унаследован из AbstractCategory,
+ * так как поведение не отличается. Подкласс остаётся как точка расширения:
+ * например FeaturedCategory может добавить поле $bannerImage и
+ * переопределить toArray() не затрагивая этот класс.
+ */
+final class GeneralCategory extends AbstractCategory
 {
-    public function toArray(): array
-    {
-        return [
-            'id' => $this->id,
-            'name' => $this->name,
-        ];
-    }
 }

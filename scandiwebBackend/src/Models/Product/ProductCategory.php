@@ -6,19 +6,34 @@ namespace App\Models\Product;
 
 /**
  * Backed enum для категорий продуктов.
- * Гарантирует что в систему попадают только известные значения категорий.
- * Заменяет строковые литералы в match() и передачу category как string.
+ * Единственный источник правды о допустимых значениях категории.
+ * Устраняет строковые проверки вида !== 'all', !== null по всему коду.
  */
 enum ProductCategory: string
 {
+    case All     = 'all';
     case Clothes = 'clothes';
     case Tech    = 'tech';
 
     /**
-     * Создаёт enum из строки (например из БД).
-     * Бросает InvalidArgumentException вместо пустого default.
+     * Конвертирует nullable строку из GraphQL аргумента в enum.
+     * null (аргумент не передан) → All (без фильтра).
      *
-     * @throws \InvalidArgumentException для неизвестных категорий
+     * @throws \InvalidArgumentException для неизвестных значений
+     */
+    public static function fromNullableString(?string $value): self
+    {
+        if ($value === null) {
+            return self::All;
+        }
+
+        return self::fromString($value);
+    }
+
+    /**
+     * Конвертирует строку из БД в enum.
+     *
+     * @throws \InvalidArgumentException для неизвестных значений
      */
     public static function fromString(string $value): self
     {
@@ -32,5 +47,13 @@ enum ProductCategory: string
         }
 
         return $case;
+    }
+
+    /**
+     * Означает ли этот кейс "без фильтра по категории".
+     */
+    public function isAll(): bool
+    {
+        return $this === self::All;
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\GraphQL\Resolvers;
 
 use App\Models\Product\AbstractProduct;
+use App\Models\Product\ProductCategory;
 use App\Repository\ProductRepository;
 
 class ProductResolver
@@ -16,18 +17,23 @@ class ProductResolver
         $this->repository = new ProductRepository();
     }
 
-    public function getAll(?string $category = null): array
+    /**
+     * @param ProductCategory $category  Всегда enum — конвертация из ?string сделана в SchemaBuilder
+     */
+    public function getAll(ProductCategory $category): array
     {
         $rows = $this->repository->findAll($category);
 
+        // Пустой результат — валидный ответ, не ошибка.
+        // GraphQL вернёт {"data": {"products": []}}
         if (empty($rows)) {
             return [];
         }
 
-        // Собираем все product_id одним проходом
         $productIds = array_column($rows, 'id');
 
-        // Два batch-запроса вместо N*2 запросов в цикле
+        // Batch-запросы: исключения из repository (пустой массив) не могут
+        // возникнуть здесь, т.к. мы проверили empty($rows) выше.
         $attributesByProduct = $this->repository->findAttributesByProductIds($productIds);
         $pricesByProduct     = $this->repository->findPricesByProductIds($productIds);
 
@@ -49,7 +55,6 @@ class ProductResolver
             return null;
         }
 
-        // Для одиночного продукта те же batch-методы (принимают массив)
         $attributesByProduct = $this->repository->findAttributesByProductIds([$id]);
         $pricesByProduct     = $this->repository->findPricesByProductIds([$id]);
 
@@ -60,16 +65,11 @@ class ProductResolver
         )->toArray();
     }
 
-    /**
-     * Собирает объект продукта из строки БД + предзагруженных связей.
-     * Не делает никаких запросов к БД — данные уже подготовлены Resolver-ом.
-     */
     private function hydrateProduct(
         array $row,
         array $attributes,
         array $prices
     ): AbstractProduct {
-        // AbstractProduct::create() — Static Factory Method с валидацией
         $product = AbstractProduct::create($row);
         $product->setAttributes($attributes);
         $product->setPrices($prices);

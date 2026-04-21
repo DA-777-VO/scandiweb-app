@@ -35,10 +35,10 @@ abstract class AbstractProduct
     protected array $prices = [];
 
     /**
-     * Конструктор protected — используется только фабрикой create().
-     * Фабрика уже преобразовала category в enum, поэтому повторной проверки здесь нет.
+     * Конструктор private — объекты создаются только через create().
+     * Дочерние классы не могут быть инстанцированы напрямую через new.
      */
-    protected function __construct(array $data, ProductCategory $category)
+    private function __construct(array $data)
     {
         $this->id          = $data['id'];
         $this->name        = $data['name'];
@@ -46,7 +46,9 @@ abstract class AbstractProduct
         $this->gallery     = json_decode($data['gallery'] ?? '[]', true) ?? [];
         $this->description = $data['description'] ?? '';
         $this->brand       = $data['brand'] ?? '';
-        $this->category    = $category;
+
+        // Валидируем категорию через enum — бросит исключение для неизвестных значений
+        $this->category = ProductCategory::fromString($data['category'] ?? '');
     }
 
     // ── Static Factory Method ─────────────────────────────────────────────────
@@ -71,12 +73,12 @@ abstract class AbstractProduct
             throw new \InvalidArgumentException('Product data must contain "category".');
         }
 
-        // Преобразуем строку в enum один раз и используем его и для match(), и для модели.
+        // Enum-валидация категории и выбор подкласса
         $category = ProductCategory::fromString($data['category']);
 
         return match ($category) {
-            ProductCategory::Clothes => new ClothesProduct($data, $category),
-            ProductCategory::Tech    => new TechProduct($data, $category),
+            ProductCategory::Clothes => new ClothesProduct($data),
+            ProductCategory::Tech    => new TechProduct($data),
         };
     }
 
