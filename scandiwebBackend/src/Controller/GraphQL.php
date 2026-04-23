@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\GraphQL\SchemaBuilder;
+use App\Logger\FileLogger;
+use GraphQL\Error\DebugFlag;
 use GraphQL\GraphQL as GraphQLBase;
 use RuntimeException;
 use Throwable;
@@ -22,8 +24,8 @@ class GraphQL
             }
 
             $input          = json_decode($rawInput, true);
-            $query          = $input['query'] ?? '';
-            $variableValues = $input['variables'] ?? null;
+            $query          = $input['query']         ?? '';
+            $variableValues = $input['variables']     ?? null;
             $operationName  = $input['operationName'] ?? null;
 
             $result = GraphQLBase::executeQuery(
@@ -35,16 +37,22 @@ class GraphQL
                 $operationName
             );
 
-            $output = $result->toArray(
-                (bool)($_ENV['APP_DEBUG'] ?? false)
-                    ? \GraphQL\Error\DebugFlag::INCLUDE_DEBUG_MESSAGE | \GraphQL\Error\DebugFlag::INCLUDE_TRACE
-                    : \GraphQL\Error\DebugFlag::NONE
-            );
+            $debugFlag = (($_ENV['APP_DEBUG'] ?? 'false') === 'true')
+                ? DebugFlag::INCLUDE_DEBUG_MESSAGE | DebugFlag::INCLUDE_TRACE
+                : DebugFlag::NONE;
+
+            $output = $result->toArray($debugFlag);
+
         } catch (Throwable $e) {
+            // Log the exception to a timestamped file in logs/
+            FileLogger::logException($e, 'graphql_error');
+
             $output = [
-                'errors' => [
-                    ['message' => $e->getMessage()],
-                ],
+                'errors' => [[
+                    'message' => (($_ENV['APP_DEBUG'] ?? 'false') === 'true')
+                        ? $e->getMessage()
+                        : 'Internal server error',
+                ]],
             ];
         }
 

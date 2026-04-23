@@ -15,26 +15,7 @@ class Connection
     public static function getInstance(): PDO
     {
         if (self::$instance === null) {
-            $host     = $_ENV['DB_HOST']     ?? 'localhost';
-            $port     = $_ENV['DB_PORT']     ?? '3306';
-            $dbname   = $_ENV['DB_NAME']     ?? 'scandiweb';
-            $user     = $_ENV['DB_USER']     ?? 'root';
-            $password = $_ENV['DB_PASSWORD'] ?? '';
-
-            try {
-                self::$instance = new PDO(
-                    "mysql:host={$host};port={$port};dbname={$dbname};charset=utf8mb4",
-                    $user,
-                    $password,
-                    [
-                        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
-                        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                        PDO::ATTR_EMULATE_PREPARES   => false,
-                    ]
-                );
-            } catch (PDOException $e) {
-                throw new \RuntimeException('Database connection failed: ' . $e->getMessage());
-            }
+            self::$instance = self::createConnection();
         }
 
         return self::$instance;
@@ -42,21 +23,12 @@ class Connection
 
     /**
      * Executes a callable inside a database transaction.
-     *
-     * All PDO operations in $block either ALL commit or ALL rollback.
-     * Use wherever atomicity is required — removes begin/commit/rollback
-     * boilerplate from every Repository.
-     *
-     * Example:
-     *   $orderId = Connection::transaction(function () use ($pdo): int {
-     *       $pdo->prepare('INSERT INTO orders ...')->execute();
-     *       return (int) $pdo->lastInsertId();
-     *   });
+     * All operations in $block either ALL commit or ALL rollback.
      *
      * @template T
      * @param  callable(): T $block
-     * @return T  Whatever the callable returns
-     * @throws Throwable  Re-throws any exception after rollback
+     * @return T
+     * @throws Throwable re-throws after rollback
      */
     public static function transaction(callable $block): mixed
     {
@@ -71,6 +43,61 @@ class Connection
             $pdo->rollBack();
             throw $e;
         }
+    }
+
+    /**
+     * Creates the PDO connection.
+     * Crashes the application immediately if any required env variable is missing
+     * or if the connection cannot be established — there is no point continuing
+     * without a database.
+     *
+     * @throws \RuntimeException with a clear message describing what is missing
+     */
+    private static function createConnection(): PDO
+    {
+        $host     = self::requireEnv('DB_HOST');
+        $port     = self::requireEnv('DB_PORT');
+        $dbname   = self::requireEnv('DB_NAME');
+        $user     = self::requireEnv('DB_USER');
+        $password = self::requireEnv('DB_PASSWORD');
+
+        try {
+            return new PDO(
+                "mysql:host={$host};port={$port};dbname={$dbname};charset=utf8mb4",
+                $user,
+                $password,
+                [
+                    PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_EMULATE_PREPARES   => false,
+                ]
+            );
+        } catch (PDOException $e) {
+            throw new \RuntimeException(
+                "Database connection failed: {$e->getMessage()}. "
+                . "Check that MySQL is running and credentials in .env are correct."
+            );
+        }
+    }
+
+    /**
+     * Reads a required environment variable.
+     * Crashes immediately with a descriptive message if the variable is not set or empty.
+     *
+     * @throws \RuntimeException
+     */
+    private static function requireEnv(string $name): string
+    {
+        $value = $_ENV[$name] ?? null;
+
+        if ($value === null || $value === '') {
+            throw new \RuntimeException(
+                "Required environment variable '{$name}' is not set. "
+                . "Add it to your .env file."
+            );
+        }
+
+        return $value;
     }
 
     private function __construct() {}

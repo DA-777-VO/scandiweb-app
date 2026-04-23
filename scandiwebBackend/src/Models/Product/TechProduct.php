@@ -5,14 +5,13 @@ declare(strict_types=1);
 namespace App\Models\Product;
 
 /**
- * Продукт категории "tech".
- *
- * Класс намеренно пустой — он представляет конкретный тип продукта
- * для полиморфизма (требование ТЗ).
- *
- * Расширяется когда техника получает уникальные поля/поведение
- * (например: warranty, technical specs, compatibility и т.д.).
+ * Product of category "tech".
+ * Category is declared here as part of the type — not stored as runtime data.
  */
 final class TechProduct extends AbstractProduct
 {
+    public function getCategory(): ProductCategory
+    {
+        return ProductCategory::Tech;
+    }
 }

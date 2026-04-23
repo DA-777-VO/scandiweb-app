@@ -7,25 +7,18 @@ namespace App\Models\Product;
 use App\Models\Attribute\AbstractAttribute;
 
 /**
- * Абстрактная модель продукта.
+ * Abstract base for all product types.
  *
- * Паттерн Static Factory Method:
- *   - конструктор private → нельзя создать объект снаружи через new
- *   - статический метод create() → единственная точка создания объектов
- *   - каждый подкласс вызывает parent::__construct() через static::new()
- *
- * Подклассы (ClothesProduct, TechProduct) остаются пустыми намеренно —
- * они представляют разные типы для полиморфизма (требование ТЗ),
- * даже если текущая логика одинакова. В будущем каждый расширяется отдельно.
+ * gallery is loaded separately (product_gallery table) and injected
+ * via setGallery() — it is no longer part of the products table row.
  */
 abstract class AbstractProduct
 {
     protected string $id;
     protected string $name;
     protected bool   $inStock;
-    protected array  $gallery;
+    protected array  $gallery     = [];
     protected string $description;
-    protected ProductCategory $category;
     protected string $brand;
 
     /** @var AbstractAttribute[] */
@@ -35,46 +28,56 @@ abstract class AbstractProduct
     protected array $prices = [];
 
     /**
-     * Конструктор private — объекты создаются только через create().
-     * Дочерние классы не могут быть инстанцированы напрямую через new.
+     * Constructor receives already-validated data from create().
+     * No validation here — create() is the single validation point.
+     * private: only create() can instantiate subclasses.
      */
     private function __construct(array $data)
     {
         $this->id          = $data['id'];
         $this->name        = $data['name'];
-        $this->inStock     = (bool) ($data['in_stock'] ?? false);
-        $this->gallery     = json_decode($data['gallery'] ?? '[]', true) ?? [];
-        $this->description = $data['description'] ?? '';
-        $this->brand       = $data['brand'] ?? '';
-
-        // Валидируем категорию через enum — бросит исключение для неизвестных значений
-        $this->category = ProductCategory::fromString($data['category'] ?? '');
+        $this->inStock     = (bool) $data['in_stock'];
+        $this->description = $data['description'];
+        $this->brand       = $data['brand'];
+        // gallery is not in $data — loaded via setGallery() after construction
     }
 
-    // ── Static Factory Method ─────────────────────────────────────────────────
+    // ── Static Factory ────────────────────────────────────────────────────────
 
     /**
-     * Единственная точка создания продуктов.
-     * Валидирует обязательные поля, определяет тип через enum категории.
+     * Single entry point for creating products.
+     * Validates ALL fields from the products table row.
+     * gallery is NOT validated here — it comes from a separate table.
      *
-     * @param  array<string, mixed> $data  Строка из БД
-     * @throws \InvalidArgumentException   При отсутствии обязательных полей или неизвестной категории
+     * @throws \InvalidArgumentException for any missing or invalid field
      */
     public static function create(array $data): static
     {
-        // Валидация обязательных полей
-        if (empty($data['id'])) {
-            throw new \InvalidArgumentException('Product data must contain a non-empty "id".');
-        }
-        if (empty($data['name'])) {
-            throw new \InvalidArgumentException('Product data must contain a non-empty "name".');
-        }
-        if (!isset($data['category'])) {
-            throw new \InvalidArgumentException('Product data must contain "category".');
+        if (!isset($data['id']) || $data['id'] === '') {
+            throw new \InvalidArgumentException('Product "id" is required and must not be empty.');
         }
 
-        // Enum-валидация категории и выбор подкласса
-        $category = ProductCategory::fromString($data['category']);
+        if (!isset($data['name']) || $data['name'] === '') {
+            throw new \InvalidArgumentException('Product "name" is required and must not be empty.');
+        }
+
+        if (!isset($data['in_stock'])) {
+            throw new \InvalidArgumentException('Product "in_stock" is required.');
+        }
+
+        if (!isset($data['description'])) {
+            throw new \InvalidArgumentException('Product "description" is required.');
+        }
+
+        if (!isset($data['brand']) || $data['brand'] === '') {
+            throw new \InvalidArgumentException('Product "brand" is required and must not be empty.');
+        }
+
+        if (!isset($data['category']) || $data['category'] === '') {
+            throw new \InvalidArgumentException('Product "category" is required and must not be empty.');
+        }
+
+        $category = ProductCategory::fromStringOrThrow($data['category']);
 
         return match ($category) {
             ProductCategory::Clothes => new ClothesProduct($data),
@@ -82,54 +85,28 @@ abstract class AbstractProduct
         };
     }
 
-    // ── Геттеры ───────────────────────────────────────────────────────────────
+    // ── Abstract ──────────────────────────────────────────────────────────────
 
-    public function getId(): string
+    abstract public function getCategory(): ProductCategory;
+
+    // ── Getters ───────────────────────────────────────────────────────────────
+
+    public function getId(): string          { return $this->id; }
+    public function getName(): string        { return $this->name; }
+    public function isInStock(): bool        { return $this->inStock; }
+    public function getGallery(): array      { return $this->gallery; }
+    public function getDescription(): string { return $this->description; }
+    public function getBrand(): string       { return $this->brand; }
+    public function getAttributes(): array   { return $this->attributes; }
+    public function getPrices(): array       { return $this->prices; }
+
+    // ── Setters ───────────────────────────────────────────────────────────────
+
+    /** @param string[] $urls Ordered list of image URLs from product_gallery table */
+    public function setGallery(array $urls): void
     {
-        return $this->id;
+        $this->gallery = $urls;
     }
-
-    public function getName(): string
-    {
-        return $this->name;
-    }
-
-    public function isInStock(): bool
-    {
-        return $this->inStock;
-    }
-
-    public function getGallery(): array
-    {
-        return $this->gallery;
-    }
-
-    public function getDescription(): string
-    {
-        return $this->description;
-    }
-
-    public function getCategory(): ProductCategory
-    {
-        return $this->category;
-    }
-
-    public function getBrand(): string
-    {
-        return $this->brand;
-    }
-
-    public function getAttributes(): array
-    {
-        return $this->attributes;
-    }
-
-    public function getPrices(): array
-    {
-        return $this->prices;
-    }
-
-    // ── Сеттеры (вызываются из Resolver после загрузки связанных данных) ──────
 
     public function setAttributes(array $attributesData): void
     {
@@ -144,7 +121,7 @@ abstract class AbstractProduct
         $this->prices = $prices;
     }
 
-    // ── Сериализация ──────────────────────────────────────────────────────────
+    // ── Serialization ─────────────────────────────────────────────────────────
 
     public function toArray(): array
     {
@@ -154,7 +131,7 @@ abstract class AbstractProduct
             'inStock'     => $this->inStock,
             'gallery'     => $this->gallery,
             'description' => $this->description,
-            'category'    => $this->category->value,
+            'category'    => $this->getCategory()->value,
             'brand'       => $this->brand,
             'attributes'  => array_map(
                 fn(AbstractAttribute $attr) => $attr->toArray(),

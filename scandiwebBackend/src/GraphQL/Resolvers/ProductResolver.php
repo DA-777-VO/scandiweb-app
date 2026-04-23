@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\GraphQL\Resolvers;
 
+use App\GraphQL\Queries\AllProductsQuery;
+use App\GraphQL\Queries\ProductByIdQuery;
+use App\GraphQL\Queries\ProductsByCategoryQuery;
 use App\Models\Product\AbstractProduct;
 use App\Models\Product\ProductCategory;
 use App\Repository\ProductRepository;
@@ -17,29 +20,30 @@ class ProductResolver
         $this->repository = new ProductRepository();
     }
 
-    /**
-     * @param ProductCategory $category  Всегда enum — конвертация из ?string сделана в SchemaBuilder
-     */
-    public function getAll(ProductCategory $category): array
+    public function getAll(?string $category): array
     {
-        $rows = $this->repository->findAll($category);
+        $query = $category === null
+            ? new AllProductsQuery()
+            : new ProductsByCategoryQuery(ProductCategory::fromStringOrThrow($category));
 
-        // Пустой результат — валидный ответ, не ошибка.
-        // GraphQL вернёт {"data": {"products": []}}
+        /** @var array<int, array<string, mixed>> $rows */
+        $rows = $this->repository->find($query);
+
         if (empty($rows)) {
             return [];
         }
 
         $productIds = array_column($rows, 'id');
 
-        // Batch-запросы: исключения из repository (пустой массив) не могут
-        // возникнуть здесь, т.к. мы проверили empty($rows) выше.
+        // Three batch queries — one per relation
+        $galleryByProduct    = $this->repository->findGalleryByProductIds($productIds);
         $attributesByProduct = $this->repository->findAttributesByProductIds($productIds);
         $pricesByProduct     = $this->repository->findPricesByProductIds($productIds);
 
         return array_map(
             fn(array $row) => $this->hydrateProduct(
                 $row,
+                $galleryByProduct[$row['id']]    ?? [],
                 $attributesByProduct[$row['id']] ?? [],
                 $pricesByProduct[$row['id']]     ?? []
             )->toArray(),
@@ -49,17 +53,20 @@ class ProductResolver
 
     public function getById(string $id): ?array
     {
-        $row = $this->repository->findById($id);
+        /** @var array<string, mixed>|null $row */
+        $row = $this->repository->find(new ProductByIdQuery($id));
 
         if ($row === null) {
             return null;
         }
 
+        $galleryByProduct    = $this->repository->findGalleryByProductIds([$id]);
         $attributesByProduct = $this->repository->findAttributesByProductIds([$id]);
         $pricesByProduct     = $this->repository->findPricesByProductIds([$id]);
 
         return $this->hydrateProduct(
             $row,
+            $galleryByProduct[$id]    ?? [],
             $attributesByProduct[$id] ?? [],
             $pricesByProduct[$id]     ?? []
         )->toArray();
@@ -67,10 +74,12 @@ class ProductResolver
 
     private function hydrateProduct(
         array $row,
+        array $gallery,
         array $attributes,
         array $prices
     ): AbstractProduct {
         $product = AbstractProduct::create($row);
+        $product->setGallery($gallery);
         $product->setAttributes($attributes);
         $product->setPrices($prices);
         return $product;

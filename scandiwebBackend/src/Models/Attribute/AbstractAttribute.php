@@ -5,93 +5,83 @@ declare(strict_types=1);
 namespace App\Models\Attribute;
 
 /**
- * Абстрактная модель атрибута продукта.
+ * Abstract base for all attribute types.
  *
- * Применяет тот же паттерн Static Factory Method что и AbstractProduct:
- *   - конструктор private
- *   - create() — единственная точка входа, с валидацией и enum-контролем типа
+ * Type is NOT stored as a field — each subclass declares it via abstract getType().
+ * The type is intrinsic to the subclass, just like category is intrinsic to
+ * ClothesProduct / TechProduct.
  *
- * TextAttribute и SwatchAttribute намеренно пустые — они нужны как отдельные
- * типы для полиморфизма. formatItems() живёт здесь т.к. логика одинакова;
- * подклассы переопределят его когда их поведение начнёт различаться.
+ * Constructor is private — use create() as single entry point.
+ * All validation happens in create(); constructor assigns already-validated data.
  */
 abstract class AbstractAttribute
 {
-    protected string        $id;
-    protected string        $name;
-    protected AttributeType $type;
-    protected array         $items;
+    protected string $id;
+    protected string $name;
+    protected array  $items;
 
     /**
-     * Конструктор private — объекты создаются только через create().
+     * Constructor receives already-validated data — no checks here.
+     * private: only create() can instantiate subclasses.
      */
-    private function __construct(array $data)
+    private function __construct(string $id, string $name, array $items)
     {
-        $this->id    = $data['id'];
-        $this->name  = $data['name'];
-        $this->items = $data['items'] ?? [];
-
-        // Enum-валидация типа
-        $this->type = AttributeType::fromString($data['type'] ?? '');
+        $this->id    = $id;
+        $this->name  = $name;
+        $this->items = $items;
     }
 
-    // ── Static Factory Method ─────────────────────────────────────────────────
+    // ── Static Factory ────────────────────────────────────────────────────────
 
     /**
-     * Создаёт атрибут нужного подкласса на основе type.
+     * Single entry point for creating attributes.
+     * Validates ALL fields, then uses AttributeType enum to pick the subclass.
      *
-     * @param  array<string, mixed> $data
-     * @throws \InvalidArgumentException при отсутствии обязательных полей или неизвестном type
+     * @throws \InvalidArgumentException for any missing or invalid field
      */
     public static function create(array $data): static
     {
-        if (empty($data['id'])) {
-            throw new \InvalidArgumentException('Attribute data must contain a non-empty "id".');
-        }
-        if (empty($data['name'])) {
-            throw new \InvalidArgumentException('Attribute data must contain a non-empty "name".');
-        }
-        if (!isset($data['type'])) {
-            throw new \InvalidArgumentException('Attribute data must contain "type".');
+        if (!isset($data['id']) || $data['id'] === '') {
+            throw new \InvalidArgumentException('Attribute "id" is required and must not be empty.');
         }
 
-        $type = AttributeType::fromString($data['type']);
+        if (!isset($data['name']) || $data['name'] === '') {
+            throw new \InvalidArgumentException('Attribute "name" is required and must not be empty.');
+        }
+
+        if (!isset($data['type']) || $data['type'] === '') {
+            throw new \InvalidArgumentException('Attribute "type" is required and must not be empty.');
+        }
+
+        if (!isset($data['items']) || !is_array($data['items'])) {
+            throw new \InvalidArgumentException('Attribute "items" is required and must be an array.');
+        }
+
+        // Enum validates type value and determines the subclass
+        $type = AttributeType::fromStringOrThrow($data['type']);
 
         return match ($type) {
-            AttributeType::Swatch => new SwatchAttribute($data),
-            AttributeType::Text   => new TextAttribute($data),
+            AttributeType::Text   => new TextAttribute($data['id'], $data['name'], $data['items']),
+            AttributeType::Swatch => new SwatchAttribute($data['id'], $data['name'], $data['items']),
         };
     }
 
-    // ── Геттеры ───────────────────────────────────────────────────────────────
-
-    public function getId(): string
-    {
-        return $this->id;
-    }
-
-    public function getName(): string
-    {
-        return $this->name;
-    }
-
-    public function getType(): AttributeType
-    {
-        return $this->type;
-    }
-
-    public function getItems(): array
-    {
-        return $this->items;
-    }
-
-    // ── Форматирование ────────────────────────────────────────────────────────
+    // ── Abstract ──────────────────────────────────────────────────────────────
 
     /**
-     * Форматирует варианты атрибута для GraphQL ответа.
-     * Логика одинакова для text и swatch — различие только в семантике value.
-     * Подклассы переопределяют этот метод когда их форматирование расходится.
+     * Returns the type of this attribute.
+     * Implemented by each subclass — the type is intrinsic to the class.
      */
+    abstract public function getType(): AttributeType;
+
+    // ── Getters ───────────────────────────────────────────────────────────────
+
+    public function getId(): string    { return $this->id; }
+    public function getName(): string  { return $this->name; }
+    public function getItems(): array  { return $this->items; }
+
+    // ── Formatting ────────────────────────────────────────────────────────────
+
     public function formatItems(): array
     {
         return array_map(
@@ -109,7 +99,7 @@ abstract class AbstractAttribute
         return [
             'id'    => $this->id,
             'name'  => $this->name,
-            'type'  => $this->type->value,
+            'type'  => $this->getType()->value,
             'items' => $this->formatItems(),
         ];
     }

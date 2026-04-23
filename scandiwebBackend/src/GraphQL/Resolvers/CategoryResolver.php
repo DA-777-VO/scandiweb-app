@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\GraphQL\Resolvers;
 
-use App\Models\Category\GeneralCategory;
+use App\GraphQL\Queries\AllCategoriesQuery;
+use App\GraphQL\Queries\CategoryByNameQuery;
+use App\Models\Category\AbstractCategory;
 use App\Repository\CategoryRepository;
 
 class CategoryResolver
@@ -18,22 +20,23 @@ class CategoryResolver
 
     public function getAll(): array
     {
-        $rows = $this->repository->findAll();
+        /** @var array<int, array<string, mixed>> $rows */
+        $rows = $this->repository->find(new AllCategoriesQuery());
 
         return array_map(
-            fn(array $row) => (new GeneralCategory($row))->toArray(),
+            fn(array $row) => AbstractCategory::create($row)->toArray(),
             $rows
         );
     }
 
+    /**
+     * Returns null if the category is not found — correct GraphQL "not found" response.
+     */
     public function getByName(string $name): ?array
     {
-        $row = $this->repository->findByName($name);
+        /** @var array<string, mixed>|null $row */
+        $row = $this->repository->find(new CategoryByNameQuery($name));
 
-        if ($row === null) {
-            return null;
-        }
-
-        return (new GeneralCategory($row))->toArray();
+        return $row !== null ? AbstractCategory::create($row)->toArray() : null;
     }
 }

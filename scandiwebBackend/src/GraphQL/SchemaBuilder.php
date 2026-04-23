@@ -10,7 +10,6 @@ use App\GraphQL\Resolvers\ProductResolver;
 use App\GraphQL\Types\AttributeType;
 use App\GraphQL\Types\CategoryType;
 use App\GraphQL\Types\ProductType;
-use App\Models\Product\ProductCategory;
 use GraphQL\Type\Definition\InputObjectType;
 use GraphQL\Type\Definition\ObjectType;
 use GraphQL\Type\Definition\Type;
@@ -34,29 +33,34 @@ class SchemaBuilder
         $queryType = new ObjectType([
             'name'   => 'Query',
             'fields' => [
+
                 'categories' => [
                     'type'    => Type::listOf($categoryType),
                     'resolve' => fn() => $categoryResolver->getAll(),
                 ],
+
                 'category' => [
                     'type'    => $categoryType,
                     'args'    => ['name' => Type::nonNull(Type::string())],
-                    'resolve' => fn($root, array $args) => $categoryResolver->getByName($args['name']),
+                    'resolve' => fn($root, array $args)
+                        => $categoryResolver->getByName($args['name']),
                 ],
+
                 'products' => [
                     'type'    => Type::listOf($productType),
                     'args'    => ['category' => Type::string()],
-//                    'resolve' => fn($root, array $args) => $productResolver->getAll($args['category'] ?? null),
+                    // Null means "all" — ProductResolver handles the strategy selection
                     'resolve' => fn($root, array $args)
-                    => $productResolver->getAll(
-                        ProductCategory::fromNullableString($args['category'] ?? null)
-                    ),
+                        => $productResolver->getAll($args['category'] ?? null),
                 ],
+
                 'product' => [
                     'type'    => $productType,
                     'args'    => ['id' => Type::nonNull(Type::string())],
-                    'resolve' => fn($root, array $args) => $productResolver->getById($args['id']),
+                    'resolve' => fn($root, array $args)
+                        => $productResolver->getById($args['id']),
                 ],
+
             ],
         ]);
 
@@ -72,13 +76,18 @@ class SchemaBuilder
         $mutationType = new ObjectType([
             'name'   => 'Mutation',
             'fields' => [
+
                 'placeOrder' => [
                     'type'    => Type::boolean(),
                     'args'    => [
-                        'items' => Type::nonNull(Type::listOf(Type::nonNull($orderItemInputType))),
+                        'items' => Type::nonNull(
+                            Type::listOf(Type::nonNull($orderItemInputType))
+                        ),
                     ],
-                    'resolve' => fn($root, array $args) => $orderMutation->placeOrder($args['items']),
+                    'resolve' => fn($root, array $args)
+                        => $orderMutation->placeOrder($args['items']),
                 ],
+
             ],
         ]);
 

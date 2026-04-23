@@ -4,18 +4,15 @@ declare(strict_types=1);
 
 namespace App\Models\Attribute;
 
-/**
- * Backed enum для типов атрибутов.
- */
 enum AttributeType: string
 {
     case Text   = 'text';
     case Swatch = 'swatch';
 
     /**
-     * @throws \InvalidArgumentException для неизвестных типов
+     * @throws \InvalidArgumentException for unknown values
      */
-    public static function fromString(string $value): self
+    public static function fromStringOrThrow(string $value): self
     {
         $case = self::tryFrom($value);
 

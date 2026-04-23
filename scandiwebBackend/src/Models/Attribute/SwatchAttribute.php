@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace App\Models\Attribute;
 
 /**
- * Цветовой атрибут-свотч (Color).
- *
- * Класс намеренно пустой — представляет конкретный тип для полиморфизма.
- * value содержит HEX-цвет (#44FF03), displayValue — название (Green).
- * Расширяется когда свотчи получают уникальное поведение
- * (например: валидация HEX-формата, конвертация цветовых моделей и т.д.).
+ * Color swatch attribute (Color).
+ * value contains a HEX color code (#44FF03).
+ * Type is declared here — not stored as runtime data.
  */
 final class SwatchAttribute extends AbstractAttribute
 {
+    public function getType(): AttributeType
+    {
+        return AttributeType::Swatch;
+    }
 }

@@ -5,15 +5,13 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Database\Connection;
-use App\Models\Product\ProductCategory;
+use App\GraphQL\Queries\AllProductsQuery;
+use App\GraphQL\Queries\ProductByIdQuery;
+use App\GraphQL\Queries\ProductQuery;
+use App\GraphQL\Queries\ProductsByCategoryQuery;
 
 class ProductRepository
 {
-    /**
-     * Максимальное количество id в одном IN(...) запросе.
-     * Предотвращает слишком длинные запросы при большом количестве продуктов.
-     * При превышении — запросы разбиваются на чанки и результаты сливаются.
-     */
     private const CHUNK_SIZE = 100;
 
     private \PDO $pdo;
@@ -23,29 +21,43 @@ class ProductRepository
         $this->pdo = Connection::getInstance();
     }
 
-    // ── Продукты ──────────────────────────────────────────────────────────────
+    // ── Strategy: single entry point ─────────────────────────────────────────
 
     /**
-     * Возвращает продукты, опционально отфильтрованные по категории.
-     * Принимает enum — никаких строковых проверок внутри.
-     * ProductCategory::All означает "без фильтра".
-     *
-     * @return array<int, array<string, mixed>>
+     * @return array<int, array<string, mixed>>|array<string, mixed>|null
+     * @throws \InvalidArgumentException for unknown query types
      */
-    public function findAll(ProductCategory $category): array
+    public function find(ProductQuery $query): array|null
     {
-        if ($category->isAll()) {
-            $stmt = $this->pdo->query('SELECT * FROM products');
-        } else {
-            $stmt = $this->pdo->prepare('SELECT * FROM products WHERE category = ?');
-            $stmt->execute([$category->value]);
-        }
+        return match (true) {
+            $query instanceof AllProductsQuery        => $this->findAll(),
+            $query instanceof ProductsByCategoryQuery => $this->findByCategory($query->category->value),
+            $query instanceof ProductByIdQuery        => $this->findById($query->id),
+            default => throw new \InvalidArgumentException(
+                'Unknown ProductQuery type: ' . $query::class
+            ),
+        };
+    }
 
+    // ── Private SQL: products ─────────────────────────────────────────────────
+
+    /** @return array<int, array<string, mixed>> */
+    private function findAll(): array
+    {
+        $stmt = $this->pdo->query('SELECT * FROM products');
+        return $stmt->fetchAll();
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    private function findByCategory(string $category): array
+    {
+        $stmt = $this->pdo->prepare('SELECT * FROM products WHERE category = ?');
+        $stmt->execute([$category]);
         return $stmt->fetchAll();
     }
 
     /** @return array<string, mixed>|null */
-    public function findById(string $id): ?array
+    private function findById(string $id): ?array
     {
         $stmt = $this->pdo->prepare('SELECT * FROM products WHERE id = ?');
         $stmt->execute([$id]);
@@ -53,16 +65,51 @@ class ProductRepository
         return $row !== false ? $row : null;
     }
 
-    // ── Batch + Chunking: атрибуты ────────────────────────────────────────────
+    // ── Batch: gallery (from product_gallery table) ───────────────────────────
 
     /**
-     * Загружает атрибуты для списка product_id.
-     * При большом списке разбивает на чанки по CHUNK_SIZE,
-     * чтобы не генерировать слишком длинные IN(...) выражения.
+     * Loads gallery URLs for a list of product ids — one query for all.
+     * gallery was moved from a JSON column to a normalised table.
      *
      * @param  non-empty-array<string> $productIds
-     * @return array<string, array<int, array<string, mixed>>>  keyed by product_id
-     * @throws \InvalidArgumentException если передан пустой массив
+     * @return array<string, string[]>  [product_id => [url, url, ...]]
+     * @throws \InvalidArgumentException on empty input
+     */
+    public function findGalleryByProductIds(array $productIds): array
+    {
+        if (empty($productIds)) {
+            throw new \InvalidArgumentException(
+                'findGalleryByProductIds requires at least one product id.'
+            );
+        }
+
+        $result = [];
+
+        foreach (array_chunk($productIds, self::CHUNK_SIZE) as $chunk) {
+            $placeholders = implode(',', array_fill(0, count($chunk), '?'));
+
+            $stmt = $this->pdo->prepare(
+                "SELECT product_id, url
+                 FROM product_gallery
+                 WHERE product_id IN ({$placeholders})
+                 ORDER BY product_id, sort_order"
+            );
+            $stmt->execute($chunk);
+
+            foreach ($stmt->fetchAll() as $row) {
+                $result[$row['product_id']][] = $row['url'];
+            }
+        }
+
+        return $result;
+    }
+
+    // ── Batch: attributes ─────────────────────────────────────────────────────
+
+    /**
+     * @param  non-empty-array<string> $productIds
+     * @return array<string, array<int, array<string, mixed>>>
+     * @throws \InvalidArgumentException on empty input
      */
     public function findAttributesByProductIds(array $productIds): array
     {
@@ -72,10 +119,9 @@ class ProductRepository
             );
         }
 
-        $chunks = array_chunk($productIds, self::CHUNK_SIZE);
         $result = [];
 
-        foreach ($chunks as $chunk) {
+        foreach (array_chunk($productIds, self::CHUNK_SIZE) as $chunk) {
             $placeholders = implode(',', array_fill(0, count($chunk), '?'));
 
             $stmt = $this->pdo->prepare(
@@ -97,7 +143,6 @@ class ProductRepository
             );
             $stmt->execute($chunk);
 
-            // Сливаем результаты чанков в общий результат
             $result = array_merge_recursive(
                 $result,
                 $this->groupAttributeRows($stmt->fetchAll())
@@ -107,15 +152,12 @@ class ProductRepository
         return $result;
     }
 
-    // ── Batch + Chunking: цены ────────────────────────────────────────────────
+    // ── Batch: prices ─────────────────────────────────────────────────────────
 
     /**
-     * Загружает цены для списка product_id.
-     * При большом списке разбивает на чанки по CHUNK_SIZE.
-     *
      * @param  non-empty-array<string> $productIds
-     * @return array<string, array<int, array<string, mixed>>>  keyed by product_id
-     * @throws \InvalidArgumentException если передан пустой массив
+     * @return array<string, array<int, array<string, mixed>>>
+     * @throws \InvalidArgumentException on empty input
      */
     public function findPricesByProductIds(array $productIds): array
     {
@@ -125,10 +167,9 @@ class ProductRepository
             );
         }
 
-        $chunks = array_chunk($productIds, self::CHUNK_SIZE);
         $result = [];
 
-        foreach ($chunks as $chunk) {
+        foreach (array_chunk($productIds, self::CHUNK_SIZE) as $chunk) {
             $placeholders = implode(',', array_fill(0, count($chunk), '?'));
 
             $stmt = $this->pdo->prepare(
@@ -152,7 +193,7 @@ class ProductRepository
         return $result;
     }
 
-    // ── Приватные методы группировки ──────────────────────────────────────────
+    // ── Grouping helpers ──────────────────────────────────────────────────────
 
     /** @return array<string, array<int, array<string, mixed>>> */
     private function groupAttributeRows(array $rows): array
@@ -181,10 +222,7 @@ class ProductRepository
             }
         }
 
-        return array_map(
-            fn(array $attrs) => array_values($attrs),
-            $grouped
-        );
+        return array_map(fn(array $attrs) => array_values($attrs), $grouped);
     }
 
     /** @return array<string, array<int, array<string, mixed>>> */
