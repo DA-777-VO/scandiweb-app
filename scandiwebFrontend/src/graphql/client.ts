@@ -1,7 +1,4 @@
-const API_URL: string =
-  (import.meta.env.VITE_API_URL as string | undefined)
-    ? `${import.meta.env.VITE_API_URL as string}`
-    : '/graphql';
+const API_URL: string = import.meta.env.VITE_API_URL || 'http://localhost:8000/graphql';
 
 export async function graphqlRequest<T>(
   query: string,

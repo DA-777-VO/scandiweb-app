@@ -47,11 +47,9 @@ class Connection
 
     /**
      * Creates the PDO connection.
-     * Crashes the application immediately if any required env variable is missing
-     * or if the connection cannot be established — there is no point continuing
-     * without a database.
+     * Crashes immediately if any required env variable is missing.
      *
-     * @throws \RuntimeException with a clear message describing what is missing
+     * @throws \RuntimeException
      */
     private static function createConnection(): PDO
     {
@@ -59,7 +57,8 @@ class Connection
         $port     = self::requireEnv('DB_PORT');
         $dbname   = self::requireEnv('DB_NAME');
         $user     = self::requireEnv('DB_USER');
-        $password = self::requireEnv('DB_PASSWORD');
+        // DB_PASSWORD is allowed to be empty — standard local MySQL setup has no password
+        $password = self::optionalEnv('DB_PASSWORD');
 
         try {
             return new PDO(
@@ -82,7 +81,7 @@ class Connection
 
     /**
      * Reads a required environment variable.
-     * Crashes immediately with a descriptive message if the variable is not set or empty.
+     * Crashes if the variable is not set or is empty.
      *
      * @throws \RuntimeException
      */
@@ -98,6 +97,16 @@ class Connection
         }
 
         return $value;
+    }
+
+    /**
+     * Reads an optional environment variable.
+     * Returns empty string if the variable is not set — used for DB_PASSWORD
+     * which is legitimately empty in standard local MySQL installations.
+     */
+    private static function optionalEnv(string $name): string
+    {
+        return $_ENV[$name] ?? '';
     }
 
     private function __construct() {}
