@@ -3,11 +3,14 @@ USE scandiweb;
 
 -- ─── Tables ────────────────────────────────────────────────────────────────
 
--- CHANGED: name is ENUM — only the three known values can be stored.
--- Enforces allowed values at DB level, not just in application code.
+-- name is VARCHAR(100) UNIQUE — allows FK reference from products.category.
+-- ENUM was considered but MySQL requires exact type match for FK columns,
+-- so ENUM('all','clothes','tech') on categories.name would break the FK
+-- when products.category is VARCHAR. Valid values are enforced by the
+-- ProductCategory PHP enum in application code.
 CREATE TABLE IF NOT EXISTS categories (
-    id   INT                         AUTO_INCREMENT PRIMARY KEY,
-    name ENUM('all','clothes','tech') NOT NULL UNIQUE
+    id   INT          AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE
 );
 
 CREATE TABLE IF NOT EXISTS currencies (
