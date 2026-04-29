@@ -4,9 +4,10 @@ import styles from './WindowsXPError.module.css';
 interface WindowsXPErrorProps {
   message?: string;
   onRetry?: () => void;
+  onClose?: () => void;
 }
 
-export default function WindowsXPError({ message, onRetry }: WindowsXPErrorProps): ReactElement {
+export default function WindowsXPError({ message, onRetry, onClose }: WindowsXPErrorProps): ReactElement {
   return (
     <div className={styles.overlay}>
       <div className={styles.window}>
@@ -18,7 +19,7 @@ export default function WindowsXPError({ message, onRetry }: WindowsXPErrorProps
           <div className={styles.titleButtons}>
             <button className={styles.btnMin}>_</button>
             <button className={styles.btnMax}>□</button>
-            <button className={`${styles.btnClose} ${styles.btnRed}`} onClick={onRetry}>✕</button>
+            <button className={`${styles.btnClose} ${styles.btnRed}`} onClick={onClose || (() => {})}>✕</button>
           </div>
         </div>
         <div className={styles.body}>
@@ -37,9 +38,11 @@ export default function WindowsXPError({ message, onRetry }: WindowsXPErrorProps
                 Retry
               </button>
             )}
-            <button className={styles.okButton} onClick={onRetry}>
-              OK
-            </button>
+            {onClose && (
+              <button className={styles.okButton} onClick={onClose}>
+                OK
+              </button>
+            )}
           </div>
         </div>
       </div>

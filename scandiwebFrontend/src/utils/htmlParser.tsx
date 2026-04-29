@@ -1,11 +1,12 @@
 import { createElement, ReactElement, ReactNode } from 'react';
 
-type ParseResult = string | ParsedElement | null;
-
 interface ParsedElement {
   type: string;
-  props: Record<string, unknown> & { children?: ReactNode | ReactNode[] };
+  props: Record<string, unknown>;
 }
+
+type ParsedChild = string | ParsedElement;
+type ParseResult = ParsedChild | null;
 
 const ALLOWED_TAGS = [
   'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
@@ -20,24 +21,26 @@ function nodeToReact(node: Node): ParseResult {
 
   const el = node as Element;
   const tag = el.tagName.toLowerCase();
-  const children = Array.from(el.childNodes)
+  const parsedChildren = Array.from(el.childNodes)
     .map(nodeToReact)
-    .filter((c): c is string | ParsedElement => c !== null && c !== '');
+    .filter((c): c is ParsedChild => c !== null && c !== '');
 
   const key = `node-${keyCounter++}`;
+  const props: Record<string, unknown> = { key };
 
   if (!(ALLOWED_TAGS as readonly string[]).includes(tag)) {
-    return { type: 'span', props: { key, children } };
+    props.children = parsedChildren.length === 1 ? parsedChildren[0] : parsedChildren;
+    return { type: 'span', props };
   }
 
-  const props: Record<string, unknown> = { key };
   if (tag === 'a') {
-    props['href'] = el.getAttribute('href') ?? '#';
-    props['target'] = '_blank';
-    props['rel'] = 'noopener noreferrer';
+    props.href = el.getAttribute('href') ?? '#';
+    props.target = '_blank';
+    props.rel = 'noopener noreferrer';
   }
 
-  return { type: tag, props: { ...props, children: children.length === 1 ? children[0] : children } };
+  props.children = parsedChildren.length === 1 ? parsedChildren[0] : parsedChildren;
+  return { type: tag, props };
 }
 
 function renderElement(node: ParseResult): ReactNode {
@@ -47,11 +50,16 @@ function renderElement(node: ParseResult): ReactNode {
   const { type, props } = node;
   const { children, ...rest } = props;
 
-  const renderedChildren: ReactNode = Array.isArray(children)
-    ? children.map(c => renderElement(c as ParseResult))
-    : renderElement(children as ParseResult);
+  let renderedChildren: ReactNode;
+  if (Array.isArray(children)) {
+    renderedChildren = children.map((c) => renderElement(c as ParseResult));
+  } else if (children !== undefined) {
+    renderedChildren = renderElement(children as ParseResult);
+  } else {
+    renderedChildren = null;
+  }
 
-  return createElement(type, rest as Record<string, unknown>, renderedChildren);
+  return createElement(type, rest, renderedChildren);
 }
 
 interface HtmlContentProps {
@@ -69,7 +77,7 @@ export function HtmlContent({ html, className, testId }: HtmlContentProps): Reac
 
   const elements = Array.from(doc.body.childNodes)
     .map(nodeToReact)
-    .filter((n): n is string | ParsedElement => n !== null)
+    .filter((n): n is ParsedChild => n !== null)
     .map(n => renderElement(n));
 
   return createElement('div', { className, 'data-testid': testId }, ...elements);
