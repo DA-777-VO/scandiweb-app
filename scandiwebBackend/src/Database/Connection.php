@@ -21,15 +21,6 @@ class Connection
         return self::$instance;
     }
 
-    /**
-     * Executes a callable inside a database transaction.
-     * All operations in $block either ALL commit or ALL rollback.
-     *
-     * @template T
-     * @param  callable(): T $block
-     * @return T
-     * @throws Throwable re-throws after rollback
-     */
     public static function transaction(callable $block): mixed
     {
         $pdo = self::getInstance();
@@ -45,19 +36,12 @@ class Connection
         }
     }
 
-    /**
-     * Creates the PDO connection.
-     * Crashes immediately if any required env variable is missing.
-     *
-     * @throws \RuntimeException
-     */
     private static function createConnection(): PDO
     {
         $host     = self::requireEnv('DB_HOST');
         $port     = self::requireEnv('DB_PORT');
         $dbname   = self::requireEnv('DB_NAME');
         $user     = self::requireEnv('DB_USER');
-        // DB_PASSWORD is allowed to be empty — standard local MySQL setup has no password
         $password = self::optionalEnv('DB_PASSWORD');
 
         try {
@@ -79,12 +63,6 @@ class Connection
         }
     }
 
-    /**
-     * Reads a required environment variable.
-     * Crashes if the variable is not set or is empty.
-     *
-     * @throws \RuntimeException
-     */
     private static function requireEnv(string $name): string
     {
         $value = $_ENV[$name] ?? null;
@@ -99,11 +77,6 @@ class Connection
         return $value;
     }
 
-    /**
-     * Reads an optional environment variable.
-     * Returns empty string if the variable is not set — used for DB_PASSWORD
-     * which is legitimately empty in standard local MySQL installations.
-     */
     private static function optionalEnv(string $name): string
     {
         return $_ENV[$name] ?? '';

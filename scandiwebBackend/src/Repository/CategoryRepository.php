@@ -18,12 +18,6 @@ class CategoryRepository
         $this->pdo = Connection::getInstance();
     }
 
-    /**
-     * Dispatches to the correct SQL query based on the CategoryQuery strategy object.
-     *
-     * @return array<int, array<string, mixed>>|array<string, mixed>|null
-     * @throws \InvalidArgumentException for unknown query types
-     */
     public function find(CategoryQuery $query): array|null
     {
         return match (true) {
@@ -35,16 +29,12 @@ class CategoryRepository
         };
     }
 
-    // ── Private SQL methods ───────────────────────────────────────────────────
-
-    /** @return array<int, array<string, mixed>> */
     private function findAll(): array
     {
         $stmt = $this->pdo->query('SELECT * FROM categories');
         return $stmt->fetchAll();
     }
 
-    /** @return array<string, mixed>|null */
     private function findByName(string $name): ?array
     {
         $stmt = $this->pdo->prepare('SELECT * FROM categories WHERE name = ?');

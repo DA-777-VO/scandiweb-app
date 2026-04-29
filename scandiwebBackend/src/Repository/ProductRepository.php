@@ -21,12 +21,6 @@ class ProductRepository
         $this->pdo = Connection::getInstance();
     }
 
-    // ── Strategy: single entry point ─────────────────────────────────────────
-
-    /**
-     * @return array<int, array<string, mixed>>|array<string, mixed>|null
-     * @throws \InvalidArgumentException for unknown query types
-     */
     public function find(ProductQuery $query): array|null
     {
         return match (true) {
@@ -39,16 +33,12 @@ class ProductRepository
         };
     }
 
-    // ── Private SQL: products ─────────────────────────────────────────────────
-
-    /** @return array<int, array<string, mixed>> */
     private function findAll(): array
     {
         $stmt = $this->pdo->query('SELECT * FROM products');
         return $stmt->fetchAll();
     }
 
-    /** @return array<int, array<string, mixed>> */
     private function findByCategory(string $category): array
     {
         $stmt = $this->pdo->prepare('SELECT * FROM products WHERE category = ?');
@@ -56,7 +46,6 @@ class ProductRepository
         return $stmt->fetchAll();
     }
 
-    /** @return array<string, mixed>|null */
     private function findById(string $id): ?array
     {
         $stmt = $this->pdo->prepare('SELECT * FROM products WHERE id = ?');
@@ -65,16 +54,6 @@ class ProductRepository
         return $row !== false ? $row : null;
     }
 
-    // ── Batch: gallery (from product_gallery table) ───────────────────────────
-
-    /**
-     * Loads gallery URLs for a list of product ids — one query for all.
-     * gallery was moved from a JSON column to a normalised table.
-     *
-     * @param  non-empty-array<string> $productIds
-     * @return array<string, string[]>  [product_id => [url, url, ...]]
-     * @throws \InvalidArgumentException on empty input
-     */
     public function findGalleryByProductIds(array $productIds): array
     {
         if (empty($productIds)) {
@@ -104,13 +83,6 @@ class ProductRepository
         return $result;
     }
 
-    // ── Batch: attributes ─────────────────────────────────────────────────────
-
-    /**
-     * @param  non-empty-array<string> $productIds
-     * @return array<string, array<int, array<string, mixed>>>
-     * @throws \InvalidArgumentException on empty input
-     */
     public function findAttributesByProductIds(array $productIds): array
     {
         if (empty($productIds)) {
@@ -152,13 +124,6 @@ class ProductRepository
         return $result;
     }
 
-    // ── Batch: prices ─────────────────────────────────────────────────────────
-
-    /**
-     * @param  non-empty-array<string> $productIds
-     * @return array<string, array<int, array<string, mixed>>>
-     * @throws \InvalidArgumentException on empty input
-     */
     public function findPricesByProductIds(array $productIds): array
     {
         if (empty($productIds)) {
@@ -193,9 +158,6 @@ class ProductRepository
         return $result;
     }
 
-    // ── Grouping helpers ──────────────────────────────────────────────────────
-
-    /** @return array<string, array<int, array<string, mixed>>> */
     private function groupAttributeRows(array $rows): array
     {
         $grouped = [];
@@ -225,7 +187,6 @@ class ProductRepository
         return array_map(fn(array $attrs) => array_values($attrs), $grouped);
     }
 
-    /** @return array<string, array<int, array<string, mixed>>> */
     private function groupPriceRows(array $rows): array
     {
         $grouped = [];

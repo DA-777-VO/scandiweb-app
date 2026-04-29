@@ -15,15 +15,6 @@ class OrderRepository
         $this->pdo = Connection::getInstance();
     }
 
-    /**
-     * Creates an order with all its items atomically.
-     * Uses Connection::transaction() — all inserts commit or all rollback.
-     * prepare() called once, execute() in loop — correct prepared statement pattern.
-     *
-     * @param  array<int, array<string, mixed>> $items
-     * @return int  The new order id
-     * @throws \Throwable on any DB error (transaction rolled back automatically)
-     */
     public function createOrder(array $items): int
     {
         return Connection::transaction(function () use ($items): int {

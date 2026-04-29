@@ -1,13 +1,6 @@
 CREATE DATABASE IF NOT EXISTS scandiweb CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE scandiweb;
 
--- ─── Tables ────────────────────────────────────────────────────────────────
-
--- name is VARCHAR(100) UNIQUE — allows FK reference from products.category.
--- ENUM was considered but MySQL requires exact type match for FK columns,
--- so ENUM('all','clothes','tech') on categories.name would break the FK
--- when products.category is VARCHAR. Valid values are enforced by the
--- ProductCategory PHP enum in application code.
 CREATE TABLE IF NOT EXISTS categories (
     id   INT          AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE
@@ -19,11 +12,6 @@ CREATE TABLE IF NOT EXISTS currencies (
     symbol VARCHAR(5)  NOT NULL
 );
 
--- CHANGED:
---   in_stock → BOOLEAN (semantic alias for TINYINT(1), communicates intent)
---   gallery  → removed, moved to product_gallery table
---   category → NOT NULL + FOREIGN KEY referencing categories(name)
---              Products must belong to a real DB category.
 CREATE TABLE IF NOT EXISTS products (
     id          VARCHAR(100) PRIMARY KEY,
     name        VARCHAR(255) NOT NULL,
@@ -34,8 +22,6 @@ CREATE TABLE IF NOT EXISTS products (
     FOREIGN KEY (category) REFERENCES categories(name) ON UPDATE CASCADE
 );
 
--- NEW: one row per image, replaces JSON gallery column in products.
--- Normalised: easy to query, order, add/remove images individually.
 CREATE TABLE IF NOT EXISTS product_gallery (
     id         INT          AUTO_INCREMENT PRIMARY KEY,
     product_id VARCHAR(100) NOT NULL,
@@ -77,9 +63,6 @@ CREATE TABLE IF NOT EXISTS orders (
     created_at DATETIME NOT NULL
 );
 
--- CHANGED: product_id now has FOREIGN KEY.
--- Prevents order items referencing non-existent products.
--- ON DELETE RESTRICT: an ordered product cannot be deleted from the catalogue.
 CREATE TABLE IF NOT EXISTS order_items (
     id                  INT          AUTO_INCREMENT PRIMARY KEY,
     order_id            INT          NOT NULL,
@@ -90,15 +73,11 @@ CREATE TABLE IF NOT EXISTS order_items (
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT
 );
 
--- ─── Seed Data ─────────────────────────────────────────────────────────────
-
 INSERT INTO categories (name) VALUES ('all'), ('clothes'), ('tech')
 ON DUPLICATE KEY UPDATE name = name;
 
 INSERT INTO currencies (label, symbol) VALUES ('USD', '$')
 ON DUPLICATE KEY UPDATE label = label;
-
--- ── Products ─────────────────────────────────────────────────────────────────
 
 INSERT INTO products (id, name, in_stock, description, category, brand) VALUES
 
@@ -131,8 +110,6 @@ INSERT INTO products (id, name, in_stock, description, category, brand) VALUES
  'tech', 'Apple')
 
 ON DUPLICATE KEY UPDATE name = name;
-
--- ── Gallery ──────────────────────────────────────────────────────────────────
 
 INSERT INTO product_gallery (product_id, url, sort_order) VALUES
 ('huarache-x-stussy-le', 'https://cdn.shopify.com/s/files/1/0087/6193/3920/products/DD1381200_DEOA_2_720x.jpg?v=1612816087', 0),
@@ -168,8 +145,6 @@ INSERT INTO product_gallery (product_id, url, sort_order) VALUES
 ('apple-airpods-pro', 'https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/MWP22?wid=572&hei=572&fmt=jpeg&qlt=95&.v=1591634795000', 0),
 
 ('apple-airtag', 'https://store.storeimages.cdn-apple.com/4982/as-images.apple.com/is/airtag-double-select-202104?wid=445&hei=370&fmt=jpeg&qlt=95&.v=1617761672000', 0);
-
--- ── Attributes ───────────────────────────────────────────────────────────────
 
 INSERT INTO attributes (product_id, name, type) VALUES ('huarache-x-stussy-le', 'Size', 'text');
 SET @attr_id = LAST_INSERT_ID();
@@ -249,8 +224,6 @@ INSERT INTO attribute_items (id, attribute_id, product_id, display_value, value,
 ('Blue',  @attr_id, 'apple-iphone-12-pro', 'Blue',  '#030BFF', 2),
 ('Black', @attr_id, 'apple-iphone-12-pro', 'Black', '#000000', 3),
 ('White', @attr_id, 'apple-iphone-12-pro', 'White', '#FFFFFF', 4);
-
--- ── Prices ───────────────────────────────────────────────────────────────────
 
 INSERT INTO prices (product_id, amount, currency_id) VALUES
 ('huarache-x-stussy-le',  144.69, 1),

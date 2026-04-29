@@ -49,7 +49,6 @@ class SchemaBuilder
                 'products' => [
                     'type'    => Type::listOf($productType),
                     'args'    => ['category' => Type::string()],
-                    // Null means "all" — ProductResolver handles the strategy selection
                     'resolve' => fn($root, array $args)
                         => $productResolver->getAll($args['category'] ?? null),
                 ],

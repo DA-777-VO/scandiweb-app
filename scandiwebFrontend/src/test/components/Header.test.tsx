@@ -48,6 +48,6 @@ describe('Header', () => {
 
   it('shows total items badge', () => {
     render(<Header categories={mockCategories} activeCategory="all" onCategoryChange={() => {}} />);
-    expect(screen.getByText('3')).toBeInTheDocument(); // Badge
+    expect(screen.getByText('3')).toBeInTheDocument();
   });
 });

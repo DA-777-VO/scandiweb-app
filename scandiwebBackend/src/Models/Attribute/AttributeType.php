@@ -9,9 +9,6 @@ enum AttributeType: string
     case Text   = 'text';
     case Swatch = 'swatch';
 
-    /**
-     * @throws \InvalidArgumentException for unknown values
-     */
     public static function fromStringOrThrow(string $value): self
     {
         $case = self::tryFrom($value);

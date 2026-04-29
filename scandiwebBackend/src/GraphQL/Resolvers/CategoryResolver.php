@@ -20,7 +20,6 @@ class CategoryResolver
 
     public function getAll(): array
     {
-        /** @var array<int, array<string, mixed>> $rows */
         $rows = $this->repository->find(new AllCategoriesQuery());
 
         return array_map(
@@ -29,12 +28,8 @@ class CategoryResolver
         );
     }
 
-    /**
-     * Returns null if the category is not found — correct GraphQL "not found" response.
-     */
     public function getByName(string $name): ?array
     {
-        /** @var array<string, mixed>|null $row */
         $row = $this->repository->find(new CategoryByNameQuery($name));
 
         return $row !== null ? AbstractCategory::create($row)->toArray() : null;

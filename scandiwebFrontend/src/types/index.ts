@@ -1,5 +1,3 @@
-// ── Domain types ──────────────────────────────────────────────────────────────
-
 export interface Currency {
   label: string;
   symbol: string;
@@ -42,9 +40,6 @@ export interface Category {
   name: string;
 }
 
-// ── Cart types ────────────────────────────────────────────────────────────────
-
-/** Selected attribute values: { "Color": "#000000", "Size": "M" } */
 export type SelectedAttributes = Record<string, string>;
 
 export interface CartItem {
@@ -53,8 +48,6 @@ export interface CartItem {
   selectedAttributes: SelectedAttributes;
   quantity: number;
 }
-
-// ── GraphQL types ─────────────────────────────────────────────────────────────
 
 export interface OrderItemInput {
   productId: string;

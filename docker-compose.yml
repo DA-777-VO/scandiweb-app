@@ -1,8 +1,6 @@
 version: '3.9'
 
 services:
-
-  # ─── MySQL ────────────────────────────────────────────────────────────────
   db:
     image: mysql:8.0
     container_name: scandiweb_db
@@ -15,9 +13,7 @@ services:
     ports:
       - "3306:3306"
     volumes:
-      # Bind mount: данные БД хранятся в папке mysql_data рядом с docker-compose.yml
       - ./mysql_data:/var/lib/mysql
-      # Автоматически выполнить migrate.sql при первом запуске
       - ./scandiwebBackend/database/migrate.sql:/docker-entrypoint-initdb.d/migrate.sql:ro
     networks:
       - scandiweb_net
@@ -27,7 +23,6 @@ services:
       timeout: 5s
       retries: 10
 
-  # ─── PHP Backend ──────────────────────────────────────────────────────────
   backend:
     build:
       context: ./scandiwebBackend
@@ -35,7 +30,7 @@ services:
     container_name: scandiweb_backend
     restart: unless-stopped
     environment:
-      DB_HOST: db           # имя сервиса выше, Docker резолвит его в IP
+      DB_HOST: db
       DB_PORT: 3306
       DB_NAME: scandiweb
       DB_USER: scandiweb
@@ -44,15 +39,13 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      # Bind mount: код монтируется из твоей папки прямо в контейнер
       - ./scandiwebBackend:/var/www/html
     networks:
       - scandiweb_net
     depends_on:
       db:
-        condition: service_healthy   # ждём пока MySQL будет готов
+        condition: service_healthy
 
-  # ─── React Frontend ───────────────────────────────────────────────────────
   frontend:
     build:
       context: ./scandiwebFrontend
@@ -62,9 +55,7 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      # Bind mount: код монтируется из твоей папки
       - ./scandiwebFrontend:/app
-      # Анонимный volume для node_modules — не перезаписывается из хоста
       - /app/node_modules
     networks:
       - scandiweb_net

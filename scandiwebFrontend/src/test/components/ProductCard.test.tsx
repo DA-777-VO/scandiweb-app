@@ -3,7 +3,6 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import ProductCard from '../../components/ProductCard/ProductCard';
 import { Product } from '../../types';
 
-// Mock the cart context
 const mockAddToCart = vi.fn();
 vi.mock('../../context/CartContext', () => ({
   useCart: () => ({ addToCart: mockAddToCart })
@@ -51,7 +50,6 @@ describe('ProductCard', () => {
     render(<ProductCard product={outOfStockProduct} onClick={() => {}} />);
     
     expect(screen.getByText('OUT OF STOCK')).toBeInTheDocument();
-    // Cart button should not be present
     expect(screen.queryByLabelText('Add to cart')).not.toBeInTheDocument();
   });
 });

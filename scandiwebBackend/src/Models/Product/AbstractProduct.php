@@ -6,12 +6,6 @@ namespace App\Models\Product;
 
 use App\Models\Attribute\AbstractAttribute;
 
-/**
- * Abstract base for all product types.
- *
- * gallery is loaded separately (product_gallery table) and injected
- * via setGallery() — it is no longer part of the products table row.
- */
 abstract class AbstractProduct
 {
     protected string $id;
@@ -21,17 +15,10 @@ abstract class AbstractProduct
     protected string $description;
     protected string $brand;
 
-    /** @var AbstractAttribute[] */
     protected array $attributes = [];
 
-    /** @var array<int, array<string, mixed>> */
     protected array $prices = [];
 
-    /**
-     * Constructor receives already-validated data from create().
-     * No validation here — create() is the single validation point.
-     * private: only create() can instantiate subclasses.
-     */
     private function __construct(array $data)
     {
         $this->id          = $data['id'];
@@ -39,18 +26,8 @@ abstract class AbstractProduct
         $this->inStock     = (bool) $data['in_stock'];
         $this->description = $data['description'];
         $this->brand       = $data['brand'];
-        // gallery is not in $data — loaded via setGallery() after construction
     }
 
-    // ── Static Factory ────────────────────────────────────────────────────────
-
-    /**
-     * Single entry point for creating products.
-     * Validates ALL fields from the products table row.
-     * gallery is NOT validated here — it comes from a separate table.
-     *
-     * @throws \InvalidArgumentException for any missing or invalid field
-     */
     public static function create(array $data): static
     {
         if (!isset($data['id']) || $data['id'] === '') {
@@ -85,11 +62,7 @@ abstract class AbstractProduct
         };
     }
 
-    // ── Abstract ──────────────────────────────────────────────────────────────
-
     abstract public function getCategory(): ProductCategory;
-
-    // ── Getters ───────────────────────────────────────────────────────────────
 
     public function getId(): string          { return $this->id; }
     public function getName(): string        { return $this->name; }
@@ -100,9 +73,6 @@ abstract class AbstractProduct
     public function getAttributes(): array   { return $this->attributes; }
     public function getPrices(): array       { return $this->prices; }
 
-    // ── Setters ───────────────────────────────────────────────────────────────
-
-    /** @param string[] $urls Ordered list of image URLs from product_gallery table */
     public function setGallery(array $urls): void
     {
         $this->gallery = $urls;
@@ -120,8 +90,6 @@ abstract class AbstractProduct
     {
         $this->prices = $prices;
     }
-
-    // ── Serialization ─────────────────────────────────────────────────────────
 
     public function toArray(): array
     {

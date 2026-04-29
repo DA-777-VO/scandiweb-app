@@ -90,7 +90,6 @@ describe('CartContext', () => {
     expect(result.current.cartItems[0].quantity).toBe(1);
 
     act(() => {
-      // Should remove item if quantity becomes 0
       result.current.decreaseQuantity(key);
     });
     expect(result.current.cartItems).toHaveLength(0);

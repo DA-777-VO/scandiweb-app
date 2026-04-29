@@ -44,7 +44,6 @@ class GraphQL
             $output = $result->toArray($debugFlag);
 
         } catch (Throwable $e) {
-            // Log the exception to a timestamped file in logs/
             FileLogger::logException($e, 'graphql_error');
 
             $output = [

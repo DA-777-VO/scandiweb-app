@@ -81,7 +81,6 @@ function AppContent(): ReactElement {
         const firstCat = cats.length > 0 ? cats[0].name : undefined;
         if (firstCat) setActiveCategory(firstCat);
 
-        // Fetch products directly — don't rely on useEffect (activeCategory may not have changed)
         const cat = firstCat === 'all' ? undefined : firstCat;
         graphqlRequest<{ products: Product[] }>(GET_PRODUCTS, { category: cat })
           .then(productsData => {

@@ -26,7 +26,6 @@ class ProductResolver
             ? new AllProductsQuery()
             : new ProductsByCategoryQuery(ProductCategory::fromStringOrThrow($category));
 
-        /** @var array<int, array<string, mixed>> $rows */
         $rows = $this->repository->find($query);
 
         if (empty($rows)) {
@@ -35,7 +34,6 @@ class ProductResolver
 
         $productIds = array_column($rows, 'id');
 
-        // Three batch queries — one per relation
         $galleryByProduct    = $this->repository->findGalleryByProductIds($productIds);
         $attributesByProduct = $this->repository->findAttributesByProductIds($productIds);
         $pricesByProduct     = $this->repository->findPricesByProductIds($productIds);
@@ -53,7 +51,6 @@ class ProductResolver
 
     public function getById(string $id): ?array
     {
-        /** @var array<string, mixed>|null $row */
         $row = $this->repository->find(new ProductByIdQuery($id));
 
         if ($row === null) {

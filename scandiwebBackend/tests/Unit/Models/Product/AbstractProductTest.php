@@ -111,7 +111,5 @@ class AbstractProductTest extends TestCase
             ['amount' => 10.99, 'currency' => ['label' => 'USD', 'symbol' => '$']]
         ]);
         $this->assertCount(1, $product->getPrices());
-
-        // We can't easily test setAttributes here without mocking or creating Attribute array
     }
 }
