@@ -1,9 +1,10 @@
-import { ReactElement } from 'react';
+import { ReactElement, useState } from 'react';
 import type { CartItem as CartItemType } from '../../types';
 import { useCart } from '../../context/CartContext';
 import { toKebabCase, formatPrice } from '../../utils/helpers';
 import { graphqlRequest } from '../../graphql/client';
 import { PLACE_ORDER } from '../../graphql/queries';
+import WindowsXPError from '../WindowsXPError/WindowsXPError';
 import styles from './CartOverlay.module.css';
 
 export default function CartOverlay(): ReactElement | null {
@@ -18,6 +19,7 @@ export default function CartOverlay(): ReactElement | null {
     totalPrice,
     currency,
   } = useCart();
+  const [orderError, setOrderError] = useState<boolean>(false);
 
   if (!isCartOpen) return null;
 
@@ -34,11 +36,18 @@ export default function CartOverlay(): ReactElement | null {
       setIsCartOpen(false);
     } catch (e) {
       console.error('Order failed:', e);
+      setOrderError(true);
     }
   };
 
   return (
     <>
+      {orderError && (
+        <WindowsXPError
+          message="Failed to place order. Please check your connection and try again."
+          onRetry={() => setOrderError(false)}
+        />
+      )}
       <div className={styles.backdrop} onClick={() => setIsCartOpen(false)} />
       <div className={styles.overlay}>
         <div className={styles.header}>

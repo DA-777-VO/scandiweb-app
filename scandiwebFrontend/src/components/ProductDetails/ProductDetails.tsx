@@ -1,4 +1,4 @@
-import { ReactElement, useState } from 'react';
+import { ReactElement, useState, useEffect } from 'react';
 import type { Product, SelectedAttributes } from '../../types';
 import { useCart } from '../../context/CartContext';
 import { toKebabCase, formatPrice } from '../../utils/helpers';
@@ -13,6 +13,10 @@ export default function ProductDetails({ product }: ProductDetailsProps): ReactE
   const { addToCart } = useCart();
   const [selectedImage, setSelectedImage] = useState<number>(0);
   const [selectedAttributes, setSelectedAttributes] = useState<SelectedAttributes>({});
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, []);
 
   const allAttributesSelected = product.attributes.every(
     attr => selectedAttributes[attr.name] !== undefined

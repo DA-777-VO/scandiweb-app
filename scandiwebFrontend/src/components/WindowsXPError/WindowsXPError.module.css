@@ -1,0 +1,148 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.window {
+  font-family: 'Tahoma', 'Segoe UI', sans-serif;
+  width: 380px;
+  filter: drop-shadow(4px 4px 8px rgba(0,0,0,0.5));
+}
+.titleBar {
+  background: linear-gradient(to bottom, #1b5ce8, #0033cc);
+  padding: 3px 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 4px 4px 0 0;
+}
+.titleLeft {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+}
+.titleIcon {
+  width: 14px;
+  height: 14px;
+  background: radial-gradient(circle at 40% 35%, #ff6666, #cc0000);
+  border-radius: 50%;
+  position: relative;
+}
+.titleIcon::after {
+  content: '!';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  line-height: 14px;
+  text-align: center;
+}
+.titleButtons {
+  display: flex;
+  gap: 2px;
+}
+.titleButtons button {
+  width: 16px;
+  height: 14px;
+  background: linear-gradient(to bottom, #d4d0c8, #a09890);
+  border: 1px solid #888;
+  border-radius: 2px;
+  font-size: 9px;
+  cursor: pointer;
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  font-family: inherit;
+}
+.btnRed {
+  background: linear-gradient(to bottom, #e05050, #c03030) !important;
+  border-color: #800 !important;
+  color: white !important;
+  font-size: 10px !important;
+  font-weight: bold;
+}
+.body {
+  background: #d4d0c8;
+  border: 2px solid #fff;
+  border-top: none;
+  border-right: 2px solid #808080;
+  border-bottom: 2px solid #808080;
+  padding: 20px 16px 16px;
+}
+.content {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+.errorIcon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  background: radial-gradient(circle at 40% 35%, #ff4444, #cc0000);
+  border-radius: 50%;
+  border: 1px solid #990000;
+  position: relative;
+}
+.errorIcon::after {
+  content: '!';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 20px;
+  font-weight: bold;
+  line-height: 32px;
+  text-align: center;
+}
+.message {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #000;
+  line-height: 1.5;
+}
+.code {
+  margin: 0;
+  font-size: 12px;
+  color: #555;
+}
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.okButton {
+  min-width: 75px;
+  padding: 3px 12px;
+  background: linear-gradient(to bottom, #ece9d8, #d4d0c8);
+  border-top: 1px solid #fff;
+  border-left: 1px solid #fff;
+  border-right: 1px solid #808080;
+  border-bottom: 1px solid #808080;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: 'Tahoma', sans-serif;
+  color: #000;
+  border-radius: 2px;
+}
+.okButton:active {
+  border-top: 1px solid #808080;
+  border-left: 1px solid #808080;
+  border-right: 1px solid #fff;
+  border-bottom: 1px solid #fff;
+}

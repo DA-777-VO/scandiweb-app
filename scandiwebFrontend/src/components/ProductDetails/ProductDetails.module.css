@@ -46,10 +46,14 @@
 .mainImageWrapper {
   position: relative;
   flex: 1;
+  height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .mainImage {
-  width: 100%;
+  max-width: 100%;
   max-height: 500px;
   object-fit: contain;
   display: block;

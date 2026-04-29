@@ -15,6 +15,10 @@ body {
   min-height: 100vh;
 }
 
+main.overlay-active {
+  pointer-events: none;
+}
+
 .loading {
   display: flex;
   align-items: center;
