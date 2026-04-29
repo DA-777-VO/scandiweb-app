@@ -33,7 +33,7 @@ RUN dos2unix /entrypoint.sh && chmod +x /entrypoint.sh
 WORKDIR /var/www/html
 
 # Copy dependency manifests first (better layer caching)
-COPY composer.json composer.lock ./
+COPY composer.json ./
 
 RUN composer install \
         --no-dev \
