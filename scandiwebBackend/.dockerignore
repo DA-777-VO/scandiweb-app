@@ -1,32 +1,6 @@
-# Dependencies (installed by Dockerfile)
 vendor/
-
-# Environment (provided by Railway Variables, never ship .env)
 .env
-
-# Version control
 .git/
-.gitignore
-
-# Dev tooling & IDE
-.idea/
-.phpunit.cache/
-phpunit.xml
-
-# Tests
-tests/
-
-# Documentation & reports
 *.md
 docs/
-docs_new/
-arch_docs/
 docs_explained/
-
-# Logs
-logs/
-
-# Leftover / junk
-Dockerfile555
-response.*
-*.txt

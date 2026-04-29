@@ -65,14 +65,12 @@ class Connection
 
     private static function requireEnv(string $name): string
     {
-        // Check $_ENV first (populated by phpdotenv), then fall back to
-        // getenv() which reads OS-level env vars injected by Railway/Docker.
-        $value = $_ENV[$name] ?? getenv($name) ?: null;
+        $value = $_ENV[$name] ?? null;
 
         if ($value === null || $value === '') {
             throw new \RuntimeException(
                 "Required environment variable '{$name}' is not set. "
-                . "Add it to your .env file or Railway Variables."
+                . "Add it to your .env file."
             );
         }
 
@@ -81,8 +79,7 @@ class Connection
 
     private static function optionalEnv(string $name): string
     {
-        $value = $_ENV[$name] ?? getenv($name);
-        return ($value === false || $value === null) ? '' : $value;
+        return $_ENV[$name] ?? '';
     }
 
     private function __construct() {}
