@@ -1,3 +1,10 @@
-#RewriteEngine on
-#RewriteRule .* /public/$0 [L]
-#DirectoryIndex index.php
+Options -Indexes
+
+RewriteEngine On
+
+# If the file exists, serve it directly (e.g. static assets)
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# Everything else → index.php
+RewriteRule ^ index.php [L]
