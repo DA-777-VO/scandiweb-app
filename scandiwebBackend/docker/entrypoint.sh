@@ -4,17 +4,19 @@ set -e
 echo "=== entrypoint.sh started ==="
 echo "PORT env value: '${PORT}'"
 
-# Жёстко берём порт или fallback
-if [ -z "${PORT}" ]; then
-    echo "WARNING: PORT is empty, using 8080"
-    APP_PORT="8080"
-else
-    APP_PORT="${PORT}"
-fi
-
+APP_PORT="${PORT:-8080}"
 echo "Using port: ${APP_PORT}"
 
-# Перезаписываем файлы полностью — никакого sed
+# Удаляем симлинки лишних MPM напрямую
+rm -f /etc/apache2/mods-enabled/mpm_event.load
+rm -f /etc/apache2/mods-enabled/mpm_event.conf
+rm -f /etc/apache2/mods-enabled/mpm_worker.load
+rm -f /etc/apache2/mods-enabled/mpm_worker.conf
+
+# Включаем prefork
+a2enmod mpm_prefork 2>/dev/null || true
+
+# Перезаписываем конфиги портов и виртуального хоста
 echo "Listen ${APP_PORT}" > /etc/apache2/ports.conf
 
 cat > /etc/apache2/sites-available/000-default.conf <<EOF
