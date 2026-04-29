@@ -11,30 +11,32 @@ RUN apt-get update && apt-get install -y \
         pdo_mysql \
         mysqli \
         zip \
-    && a2enmod rewrite \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Фиксим конфликт MPM: отключаем event/worker, включаем prefork
+RUN a2dismod mpm_event mpm_worker 2>/dev/null || true \
+    && a2enmod mpm_prefork \
+    && a2enmod rewrite \
+    && a2enmod php8.2
 
 COPY --from=composer:2.6 /usr/bin/composer /usr/bin/composer
 
 COPY docker/apache.conf /etc/apache2/sites-available/000-default.conf
 COPY docker/ports.conf /etc/apache2/ports.conf
-
-# Добавляем entrypoint для патчинга порта
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN dos2unix /entrypoint.sh && chmod +x /entrypoint.sh
 
 WORKDIR /var/www/html
 
 COPY composer.json ./
-
 RUN composer install --no-dev --optimize-autoloader --no-scripts
 
 COPY . .
 
 RUN chown -R www-data:www-data /var/www/html
 
-EXPOSE 8000
+EXPOSE 8080
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["apache2-foreground"]
