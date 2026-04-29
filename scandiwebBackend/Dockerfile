@@ -14,11 +14,7 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Фиксим конфликт MPM: отключаем event/worker, включаем prefork
-RUN a2dismod mpm_event mpm_worker 2>/dev/null || true \
-    && a2enmod mpm_prefork \
-    && a2enmod rewrite \
-    && a2enmod php8.2
+RUN a2enmod rewrite
 
 COPY --from=composer:2.6 /usr/bin/composer /usr/bin/composer
 
