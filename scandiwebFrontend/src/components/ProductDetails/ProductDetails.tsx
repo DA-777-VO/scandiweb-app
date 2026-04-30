@@ -40,6 +40,13 @@ export default function ProductDetails({ product }: ProductDetailsProps): ReactE
     setSelectedAttributes(prev => ({ ...prev, [attrName]: value }));
   };
 
+  const getTestId = (attrName: string, value: string, displayValue?: string): string => {
+    // For swatch attributes (colors), use the value directly
+    // For text attributes, use the displayValue
+    const testValue = displayValue || value;
+    return `product-attribute-${toKebabCase(attrName)}-${testValue}`;
+  };
+
   const price = product.prices[0];
 
   return (
@@ -71,36 +78,38 @@ export default function ProductDetails({ product }: ProductDetailsProps): ReactE
         <h1 className={styles.brand}>{product.brand}</h1>
         <h2 className={styles.name}>{product.name}</h2>
 
-        {product.attributes.map(attr => (
-          <div
-            key={attr.id}
-            className={styles.attributeGroup}
-            data-testid={`product-attribute-${toKebabCase(attr.name)}`}
-          >
-            <p className={styles.attributeLabel}>{attr.name.toUpperCase()}:</p>
-            <div className={styles.attributeOptions}>
-              {attr.items.map(item =>
-                attr.type === 'swatch' ? (
-                  <button
-                    key={item.id}
-                    className={`${styles.swatchOption} ${selectedAttributes[attr.name] === item.value ? styles.swatchSelected : ''}`}
-                    style={{ background: item.value }}
-                    onClick={() => selectAttribute(attr.name, item.value)}
-                    title={item.displayValue}
-                  />
-                ) : (
-                  <button
-                    key={item.id}
-                    className={`${styles.textOption} ${selectedAttributes[attr.name] === item.value ? styles.textSelected : ''}`}
-                    onClick={() => selectAttribute(attr.name, item.value)}
-                  >
-                    {item.displayValue}
-                  </button>
-                )
-              )}
-            </div>
-          </div>
-        ))}
+         {product.attributes.map(attr => (
+           <div
+             key={attr.id}
+             className={styles.attributeGroup}
+             data-testid={`product-attribute-${toKebabCase(attr.name)}`}
+           >
+             <p className={styles.attributeLabel}>{attr.name.toUpperCase()}:</p>
+             <div className={styles.attributeOptions}>
+               {attr.items.map(item =>
+                 attr.type === 'swatch' ? (
+                   <button
+                     key={item.id}
+                     className={`${styles.swatchOption} ${selectedAttributes[attr.name] === item.value ? styles.swatchSelected : ''}`}
+                     style={{ background: item.value }}
+                     onClick={() => selectAttribute(attr.name, item.value)}
+                     title={item.displayValue}
+                     data-testid={getTestId(attr.name, item.value, item.displayValue)}
+                   />
+                 ) : (
+                   <button
+                     key={item.id}
+                     className={`${styles.textOption} ${selectedAttributes[attr.name] === item.value ? styles.textSelected : ''}`}
+                     onClick={() => selectAttribute(attr.name, item.value)}
+                     data-testid={getTestId(attr.name, item.value, item.displayValue)}
+                   >
+                     {item.displayValue}
+                   </button>
+                 )
+               )}
+             </div>
+           </div>
+         ))}
 
         {price && (
           <div className={styles.priceSection}>

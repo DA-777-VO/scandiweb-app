@@ -116,29 +116,28 @@ function CartItemRow({ item, onIncrease, onDecrease }: CartItemRowProps): ReactE
             >
               <p className={styles.attrLabel}>{attr.name}:</p>
               <div className={styles.attrOptions}>
-                {attr.items.map(attrItem => {
-                  const isSelected = selectedAttributes[attr.name] === attrItem.value;
-                  const kebabItem = toKebabCase(attrItem.id);
-                  const baseId = `cart-item-attribute-${kebabAttr}-${kebabItem}`;
-                  const testId = isSelected ? `${baseId}-selected` : baseId;
+                 {attr.items.map(attrItem => {
+                   const isSelected = selectedAttributes[attr.name] === attrItem.value;
+                   const baseId = `cart-item-attribute-${kebabAttr}-${toKebabCase(attrItem.displayValue)}`;
+                   const testId = isSelected ? `${baseId}-selected` : baseId;
 
-                  return attr.type === 'swatch' ? (
-                    <div
-                      key={attrItem.id}
-                      className={`${styles.swatchOpt} ${isSelected ? styles.swatchOptSelected : ''}`}
-                      style={{ background: attrItem.value }}
-                      data-testid={testId}
-                    />
-                  ) : (
-                    <div
-                      key={attrItem.id}
-                      className={`${styles.textOpt} ${isSelected ? styles.textOptSelected : ''}`}
-                      data-testid={testId}
-                    >
-                      {attrItem.displayValue}
-                    </div>
-                  );
-                })}
+                   return attr.type === 'swatch' ? (
+                     <div
+                       key={attrItem.id}
+                       className={`${styles.swatchOpt} ${isSelected ? styles.swatchOptSelected : ''}`}
+                       style={{ background: attrItem.value }}
+                       data-testid={testId}
+                     />
+                   ) : (
+                     <div
+                       key={attrItem.id}
+                       className={`${styles.textOpt} ${isSelected ? styles.textOptSelected : ''}`}
+                       data-testid={testId}
+                     >
+                       {attrItem.displayValue}
+                     </div>
+                   );
+                 })}
               </div>
             </div>
           );
