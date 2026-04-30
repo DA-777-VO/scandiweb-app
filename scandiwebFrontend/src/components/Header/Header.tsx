@@ -28,7 +28,7 @@ export default function Header({ categories, activeCategory, onCategoryChange }:
         >
           All
         </a>
-        {categories.map(cat => (
+        {categories.filter(cat => cat.name !== 'all').map(cat => (
           <a
             key={cat.name}
             href={`/${cat.name.toLowerCase()}`}
