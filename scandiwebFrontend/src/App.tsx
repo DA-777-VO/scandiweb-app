@@ -29,9 +29,8 @@ function AppContent(): ReactElement {
           return;
         }
         setCategories(data.categories);
-        if (data.categories.length > 0) {
-          setActiveCategory(data.categories[0].name);
-        }
+        // Keep activeCategory as 'all' (default state)
+        setError(false);
       })
       .catch(err => {
         console.error(err);
@@ -75,13 +74,11 @@ function AppContent(): ReactElement {
           return;
         }
 
-        const cats = categoriesData.categories;
-        setCategories(cats);
+         const cats = categoriesData.categories;
+         setCategories(cats);
+         setActiveCategory('all');
 
-        const firstCat = cats.length > 0 ? cats[0].name : undefined;
-        if (firstCat) setActiveCategory(firstCat);
-
-        const cat = firstCat === 'all' ? undefined : firstCat;
+         const cat = undefined;
         graphqlRequest<{ products: Product[] }>(GET_PRODUCTS, { category: cat })
           .then(productsData => {
             if (!productsData || !productsData.products || productsData.products.length === 0) {

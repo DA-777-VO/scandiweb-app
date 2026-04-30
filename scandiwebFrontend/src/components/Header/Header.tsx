@@ -12,18 +12,32 @@ interface HeaderProps {
 export default function Header({ categories, activeCategory, onCategoryChange }: HeaderProps): ReactElement {
   const { isCartOpen, setIsCartOpen, totalItems } = useCart();
 
+  const handleCategoryClick = (e: React.MouseEvent<HTMLAnchorElement>, cat: string): void => {
+    e.preventDefault();
+    onCategoryChange(cat);
+  };
+
   return (
     <header className={styles.header}>
       <nav className={styles.nav}>
+        <a
+          href="/all"
+          className={`${styles.categoryLink} ${activeCategory === 'all' ? styles.active : ''}`}
+          onClick={(e) => handleCategoryClick(e, 'all')}
+          data-testid={activeCategory === 'all' ? 'active-category-link' : 'category-link'}
+        >
+          All
+        </a>
         {categories.map(cat => (
-          <button
+          <a
             key={cat.name}
+            href={`/${cat.name.toLowerCase()}`}
             className={`${styles.categoryLink} ${activeCategory === cat.name ? styles.active : ''}`}
-            onClick={() => onCategoryChange(cat.name)}
+            onClick={(e) => handleCategoryClick(e, cat.name)}
             data-testid={activeCategory === cat.name ? 'active-category-link' : 'category-link'}
           >
             {cat.name.charAt(0).toUpperCase() + cat.name.slice(1)}
-          </button>
+          </a>
         ))}
       </nav>
 

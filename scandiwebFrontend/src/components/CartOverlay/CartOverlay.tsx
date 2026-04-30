@@ -49,7 +49,7 @@ export default function CartOverlay(): ReactElement | null {
         />
       )}
       <div className={styles.backdrop} onClick={() => setIsCartOpen(false)} />
-      <div className={styles.overlay}>
+      <div className={styles.overlay} data-testid="cart-overlay">
         <div className={styles.header}>
           <span className={styles.title}>
             <strong>My Bag</strong>
